@@ -1,0 +1,49 @@
+
+services:
+  frontend:
+    container_name: 'frontend'
+    image: 'nginx:latest'
+    volumes:
+      - /opt/docker_apps/gcash_sql/frontend/index.html:/usr/share/nginx/html/index.html
+      - /opt/docker_apps/gcash_sql/frontend/fee-table.jpg:/usr/share/nginx/html/fee-table.jpg
+    ports:
+      - "8080:80"
+    depends_on:
+      - backend
+    networks:
+      - gcash_sql_network
+  backend:
+    container_name: 'backend'
+    image: 'dockerfile/npm-gcash-sql:v3'
+    ports:
+      - "5000:5000"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      - DATABASE_URL=postgres://kfa:root@postgres:5432/gcash_db
+    networks:
+      - gcash_sql_network
+
+  postgres:
+    image: postgres:16
+    container_name: postgres
+    ports:
+      - "5433:5432"
+    environment:
+      - POSTGRES_USER=kfa
+      - POSTGRES_PASSWORD=root
+      - POSTGRES_DB=gcash_db
+    volumes:
+      - /opt/docker_apps/gcash_sql/postgres/data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U kfa"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    networks:
+      - gcash_sql_network
+
+networks:
+  gcash_sql_network:
+    external: true

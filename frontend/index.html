@@ -1,0 +1,137 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>GCash Transactions</title>
+  <style>
+    body { font-family: Arial, sans-serif; margin: 20px; }
+    table { width: 100%; border-collapse: collapse; margin-top: 20px; }
+    th, td { border: 1px solid #ddd; padding: 8px; text-align: left; }
+    th { background-color: #f2f2f2; }
+    .total-fee { font-weight: bold; margin-top: 10px; }
+    .form-group { margin-bottom: 10px; }
+    button { margin: 5px; }
+    /* Container to hold the form and fee table side by side */
+    .form-container { display: flex; justify-content: space-between; align-items: flex-start; }
+    .transaction-form { flex: 1; margin-right: 20px; }
+    .fee-table { flex: 0 0 auto; }
+    .fee-table img { max-width: 300px; height: auto; }
+    /* Styles for Remarks column background colors */
+    .remarks-sent { background-color: #add8e6; color: black; } /* Light Blue */
+    .remarks-claimed { background-color: #90ee90; color: black; } /* Light Green */
+    .remarks-load { background-color: #ffdab9; color: black; } /* Light Orange */
+    .remarks-cuana { background-color: #ffffe0; color: black; } /* Light Yellow */
+    .remarks-unpaid { background-color: #ffcccb; color: black; } /* Light Red */
+    /* Style for delete button */
+    td button {
+      padding: 5px 10px;
+      background-color: #ff4444;
+      color: white;
+      border: none;
+      border-radius: 3px;
+      cursor: pointer;
+    }
+    td button:hover {
+      background-color: #cc0000;
+    }
+    /* Style for error message */
+    .error-message { color: red; font-style: italic; }
+  </style>
+</head>
+<body>
+  <h1>GCash Transactions Inventory</h1>
+
+  <!-- Container for form and fee table -->
+  <div class="form-container">
+    <!-- Form to add a transaction -->
+    <div class="transaction-form">
+      <form id="transactionForm">
+        <div class="form-group">
+          <label>Date: <input type="date" id="date" required></label>
+        </div>
+        <div class="form-group">
+          <label>Time: <input type="time" id="time" step="1" required></label>
+        </div>
+        <div class="form-group">
+          <label>Type: 
+            <select id="type" required>
+              <option value="">Select Type</option>
+              <option value="Cash In">Cash In</option>
+              <option value="Cash Out">Cash Out</option>
+              <option value="Load">Load</option>
+              <option value="Unclaimed">Unclaimed</option>
+              <option value="Unpaid">Unpaid</option>
+            </select>
+          </label>
+        </div>
+        <div class="form-group">
+          <label>Amount: <input type="text" id="amount" required></label>
+        </div>
+        <div class="form-group">
+          <label>Name: <input type="text" id="name" required></label>
+        </div>
+        <div class="form-group">
+          <label>Reference: <input type="text" id="ref" required></label>
+        </div>
+        <div class="form-group">
+          <label>Fee: <input type="text" id="fee" required></label>
+        </div>
+        <div class="form-group">
+          <label>Remarks: <input type="text" id="remarks" required></label>
+        </div>
+        <button type="submit">Add Transaction</button>
+      </form>
+    </div>
+
+    <!-- Fee table image -->
+    <div class="fee-table">
+      <img src="/fee-table.jpg" alt="GCash Fee Table" onerror="this.style.display='none'; document.getElementById('imageError').style.display='block';">
+      <p id="imageError" class="error-message" style="display: none;">Fee table image not found. Please ensure fee-table.jpg is in the correct directory.</p>
+    </div>
+  </div>
+
+  <!-- Form to fetch transactions and download summary -->
+  <div style="margin-top: 20px;">
+    <label>Fetch Transactions for Date: <input type="date" id="fetchDate"></label>
+    <button onclick="fetchTransactions()">Fetch</button>
+    <label>Sort By (Optional): 
+      <select id="sortBy">
+        <option value="">None</option>
+        <option value="id">ID</option>
+        <option value="time">Time</option>
+        <option value="type">Type</option>
+        <option value="amount">Amount</option>
+        <option value="name">Name</option>
+        <option value="ref">Reference</option>
+        <option value="fee">Fee</option>
+        <option value="remarks">Remarks</option>
+      </select>
+    </label>
+    <button onclick="downloadSummary()">Download PDF Summary</button>
+  </div>
+
+  <!-- Table to display transactions -->
+  <table id="transactionsTable">
+    <thead>
+      <tr>
+        <th>ID</th>
+        <th>Date</th>
+        <th>Time</th>
+        <th>Type</th>
+        <th>Amount</th>
+        <th>Name</th>
+        <th>Reference</th>
+        <th>Fee</th>
+        <th>Remarks</th>
+        <th>Action</th>
+      </tr>
+    </thead>
+    <tbody id="transactionsBody"></tbody>
+  </table>
+  <div id="totalFee" class="total-fee"></div>
+  <div id="tableError" class="error-message" style="display: none;">Failed to load transactions. Please check the backend connection.</div>
+
+  <script src="script.js"></script>
+</body>
+</html>

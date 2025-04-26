@@ -1,0 +1,183 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>GCash Transactions</title>
+  <style>
+    body { font-family: Arial, sans-serif; margin: 20px; }
+    table { width: 100%; border-collapse: collapse; margin-top: 20px; }
+    th, td { border: 1px solid #ddd; padding: 8px; text-align: left; }
+    th { background-color: #f2f2f2; }
+    .total-fee { font-weight: bold; margin-top: 10px; }
+    .form-group { margin-bottom: 10px; }
+    button { margin: 5px; }
+  </style>
+</head>
+<body>
+  <h1>GCash Transactions Inventory</h1>
+
+  <!-- Form to add a transaction -->
+  <form id="transactionForm">
+    <div class="form-group">
+      <label>Date: <input type="date" id="date" required></label>
+    </div>
+    <div class="form-group">
+      <label>Time: <input type="time" id="time" required></label>
+    </div>
+    <div class="form-group">
+      <label>Type: <input type="text" id="type" required></label>
+    </div>
+    <div class="form-group">
+      <label>Amount: <input type="text" id="amount" required></label>
+    </div>
+    <div class="form-group">
+      <label>Name: <input type="text" id="name" required></label>
+    </div>
+    <div class="form-group">
+      <label>Reference: <input type="text" id="ref" required></label>
+    </div>
+    <div class="form-group">
+      <label>Fee: <input type="text" id="fee" required></label>
+    </div>
+    <div class="form-group">
+      <label>Remarks: <input type="text" id="remarks" required></label>
+    </div>
+    <button type="submit">Add Transaction</button>
+  </form>
+
+  <!-- Form to fetch transactions and download summary -->
+  <div style="margin-top: 20px;">
+    <label>Fetch Transactions for Date: <input type="date" id="fetchDate"></label>
+    <button onclick="fetchTransactions()">Fetch</button>
+    <label>Sort By (Optional): 
+      <select id="sortBy">
+        <option value="">None</option>
+        <option value="id">ID</option>
+        <option value="time">Time</option>
+        <option value="type">Type</option>
+        <option value="amount">Amount</option>
+        <option value="name">Name</option>
+        <option value="ref">Reference</option>
+        <option value="fee">Fee</option>
+        <option value="remarks">Remarks</option>
+      </select>
+    </label>
+    <button onclick="downloadSummary()">Download PDF Summary</button>
+  </div>
+
+  <!-- Table to display transactions -->
+  <table id="transactionsTable">
+    <thead>
+      <tr>
+        <th>ID</th>
+        <th>Date</th>
+        <th>Time</th>
+        <th>Type</th>
+        <th>Amount</th>
+        <th>Name</th>
+        <th>Reference</th>
+        <th>Fee</th>
+        <th>Remarks</th>
+      </tr>
+    </thead>
+    <tbody id="transactionsBody"></tbody>
+  </table>
+  <div id="totalFee" class="total-fee"></div>
+
+  <script>
+    // Set default date to today
+    const today = new Date().toISOString().split('T')[0];
+    document.getElementById('date').value = today;
+    document.getElementById('fetchDate').value = today;
+
+    // Add transaction
+    document.getElementById('transactionForm').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const transaction = {
+        date: document.getElementById('date').value,
+        time: document.getElementById('time').value,
+        type: document.getElementById('type').value,
+        amount: document.getElementById('amount').value,
+        name: document.getElementById('name').value,
+        ref: document.getElementById('ref').value,
+        fee: document.getElementById('fee').value,
+        remarks: document.getElementById('remarks').value,
+      };
+
+      try {
+        const response = await fetch('http://localhost:5000/api/transactions', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(transaction),
+        });
+        const result = await response.json();
+        if (response.ok) {
+          alert('Transaction saved successfully!');
+          // Reset form
+          document.getElementById('transactionForm').reset();
+          document.getElementById('date').value = today;
+        } else {
+          alert(`Error: ${result.error}`);
+        }
+      } catch (error) {
+        console.error(error);
+        alert('Failed to save transaction');
+      }
+    });
+
+    // Fetch transactions for a specific date
+    async function fetchTransactions() {
+      const date = document.getElementById('fetchDate').value;
+      try {
+        const response = await fetch(`http://localhost:5000/api/transactions?date=${date}`);
+        const { transactions, totalFee } = await response.json();
+        
+        const tbody = document.getElementById('transactionsBody');
+        tbody.innerHTML = ''; // Clear existing rows
+        transactions.forEach(txn => {
+          const row = document.createElement('tr');
+          row.innerHTML = `
+            <td>${txn.id}</td>
+            <td>${txn.date}</td>
+            <td>${txn.time}</td>
+            <td>${txn.type}</td>
+            <td>${txn.amount}</td>
+            <td>${txn.name}</td>
+            <td>${txn.ref}</td>
+            <td>${txn.fee}</td>
+            <td>${txn.remarks}</td>
+          `;
+          tbody.appendChild(row);
+        });
+
+        // Display total fee
+        document.getElementById('totalFee').textContent = `Total Fee: ${totalFee.toFixed(2)} PHP`;
+      } catch (error) {
+        console.error(error);
+        alert('Failed to fetch transactions');
+      }
+    }
+
+    // Download the summary as a PDF
+    function downloadSummary() {
+      const date = document.getElementById('fetchDate').value;
+      const sortBy = document.getElementById('sortBy').value;
+
+      if (!date) {
+        alert('Please select a date to download the summary.');
+        return;
+      }
+
+      // Construct the download URL with date and optional sortBy
+      let downloadUrl = `http://localhost:5000/api/transactions/download?date=${date}`;
+      if (sortBy) {
+        downloadUrl += `&sortBy=${sortBy}`;
+      }
+
+      // Trigger the download by redirecting to the endpoint
+      window.location.href = downloadUrl;
+    }
+  </script>
+</body>
+</html>
