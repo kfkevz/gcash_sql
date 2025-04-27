@@ -23,30 +23,34 @@
     .remarks-load { background-color: #ffdab9; color: black; } /* Light Orange */
     .remarks-cuana { background-color: #ffffe0; color: black; } /* Light Yellow */
     .remarks-unpaid { background-color: #ffcccb; color: black; } /* Light Red */
-    /* Style for delete button */
-    td button {
-      padding: 5px 10px;
-      background-color: #ff4444;
-      color: white;
-      border: none;
-      border-radius: 3px;
-      cursor: pointer;
-    }
-    td button:hover {
-      background-color: #cc0000;
-    }
-    /* Style for error message */
-    .error-message { color: red; font-style: italic; }
+    /* Style for action buttons */
+    .action-buttons button { padding: 5px 10px; font-size: 12px; cursor: pointer; }
+    .action-buttons .edit-btn { background-color: #4CAF50; color: white; border: none; }
+    .action-buttons .delete-btn { background-color: #f44336; color: white; border: none; }
+    /* Style for balance section */
+    .balance-section { margin: 10px 0; }
+    .balance-section label { margin-right: 10px; }
+    .balance-section input { padding: 5px; }
+    .balance-section button { padding: 5px 10px; }
+    .balance-display { font-weight: bold; font-size: 16px; margin-top: 5px; color: #2e7d32; }
   </style>
 </head>
 <body>
   <h1>GCash Transactions Inventory</h1>
 
+  <!-- Current Balance Section -->
+  <div class="balance-section">
+    <label>Set Current Balance (PHP): <input type="number" id="currentBalanceInput" min="0" step="0.01" placeholder="Enter balance"></label>
+    <button onclick="setCurrentBalance()">Set Balance</button>
+    <div id="balanceDisplay" class="balance-display">Current Balance: 0.00 PHP</div>
+  </div>
+
   <!-- Container for form and fee table -->
   <div class="form-container">
-    <!-- Form to add a transaction -->
+    <!-- Form to add/edit a transaction -->
     <div class="transaction-form">
       <form id="transactionForm">
+        <input type="hidden" id="transactionId">
         <div class="form-group">
           <label>Date: <input type="date" id="date" required></label>
         </div>
@@ -60,8 +64,6 @@
               <option value="Cash In">Cash In</option>
               <option value="Cash Out">Cash Out</option>
               <option value="Load">Load</option>
-              <option value="Unclaimed">Unclaimed</option>
-              <option value="Unpaid">Unpaid</option>
             </select>
           </label>
         </div>
@@ -80,14 +82,14 @@
         <div class="form-group">
           <label>Remarks: <input type="text" id="remarks" required></label>
         </div>
-        <button type="submit">Add Transaction</button>
+        <button type="submit" id="submitButton">Add Transaction</button>
+        <button type="button" id="cancelEditButton" style="display: none;" onclick="cancelEdit()">Cancel Edit</button>
       </form>
     </div>
 
     <!-- Fee table image -->
     <div class="fee-table">
-      <img src="/fee-table.jpg" alt="GCash Fee Table" onerror="this.style.display='none'; document.getElementById('imageError').style.display='block';">
-      <p id="imageError" class="error-message" style="display: none;">Fee table image not found. Please ensure fee-table.jpg is in the correct directory.</p>
+      <img src="/fee-table.jpg" alt="GCash Fee Table">
     </div>
   </div>
 
@@ -124,14 +126,256 @@
         <th>Reference</th>
         <th>Fee</th>
         <th>Remarks</th>
-        <th>Action</th>
+        <th>Actions</th>
       </tr>
     </thead>
     <tbody id="transactionsBody"></tbody>
   </table>
   <div id="totalFee" class="total-fee"></div>
-  <div id="tableError" class="error-message" style="display: none;">Failed to load transactions. Please check the backend connection.</div>
 
-  <script src="script.js"></script>
+  <script>
+    // Set default date to today
+    const today = new Date().toISOString().split('T')[0];
+    document.getElementById('date').value = today;
+    document.getElementById('fetchDate').value = today;
+
+    // Automatically fetch transactions and balance when the page loads
+    window.onload = function() {
+      fetchTransactions();
+      fetchCurrentBalance();
+    };
+
+    // Fetch the current balance from the backend
+    async function fetchCurrentBalance() {
+      try {
+        const response = await fetch('http://localhost:5000/api/balance');
+        const result = await response.json();
+        if (response.ok) {
+          const balanceDisplay = document.getElementById('balanceDisplay');
+          balanceDisplay.textContent = `Current Balance: ${parseFloat(result.balance).toFixed(2)} PHP`;
+        } else {
+          alert(`Error fetching balance: ${result.error}`);
+        }
+      } catch (error) {
+        console.error(error);
+        alert('Failed to fetch current balance');
+      }
+    }
+
+    // Set the current balance
+    async function setCurrentBalance() {
+      const balanceInput = document.getElementById('currentBalanceInput').value;
+      const balance = parseFloat(balanceInput);
+
+      if (isNaN(balance) || balance < 0) {
+        alert('Please enter a valid positive number for the balance.');
+        return;
+      }
+
+      try {
+        const response = await fetch('http://localhost:5000/api/balance', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ balance }),
+        });
+        const result = await response.json();
+        if (response.ok) {
+          alert('Balance set successfully!');
+          document.getElementById('currentBalanceInput').value = ''; // Clear the input
+          fetchCurrentBalance(); // Refresh the balance display
+        } else {
+          alert(`Error: ${result.error}`);
+        }
+      } catch (error) {
+        console.error(error);
+        alert('Failed to set balance');
+      }
+    }
+
+    // Add or update transaction
+    document.getElementById('transactionForm').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const transactionId = document.getElementById('transactionId').value;
+      const transaction = {
+        date: document.getElementById('date').value,
+        time: document.getElementById('time').value,
+        type: document.getElementById('type').value,
+        amount: document.getElementById('amount').value,
+        name: document.getElementById('name').value,
+        ref: document.getElementById('ref').value,
+        fee: document.getElementById('fee').value,
+        remarks: document.getElementById('remarks').value,
+      };
+
+      try {
+        let url = 'http://localhost:5000/api/transactions';
+        let method = 'POST';
+        let successMessage = 'Transaction saved successfully!';
+
+        if (transactionId) {
+          url = `http://localhost:5000/api/transactions/${transactionId}`;
+          method = 'PUT';
+          successMessage = 'Transaction updated successfully!';
+        }
+
+        const response = await fetch(url, {
+          method: method,
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(transaction),
+        });
+        const result = await response.json();
+        if (response.ok) {
+          alert(successMessage);
+          cancelEdit();
+          fetchTransactions();
+          fetchCurrentBalance(); // Refresh the balance after adding/updating
+        } else {
+          alert(`Error: ${result.error}`);
+        }
+      } catch (error) {
+        console.error(error);
+        alert(`Failed to ${transactionId ? 'update' : 'save'} transaction`);
+      }
+    });
+
+    // Fetch transactions for the selected date
+    async function fetchTransactions() {
+      const selectedDate = document.getElementById('fetchDate').value;
+      const tbody = document.getElementById('transactionsBody');
+      const totalFeeDiv = document.getElementById('totalFee');
+
+      if (!selectedDate) {
+        tbody.innerHTML = '';
+        totalFeeDiv.textContent = '';
+        return;
+      }
+
+      try {
+        const response = await fetch(`http://localhost:5000/api/transactions?date=${selectedDate}`);
+        const { transactions, totalFee } = await response.json();
+        
+        tbody.innerHTML = '';
+        transactions.forEach(txn => {
+          const row = document.createElement('tr');
+          const timeParts = txn.time.split(':');
+          const formattedTime = `${timeParts[0]}:${timeParts[1]}`;
+          let remarksClass = '';
+          switch (txn.remarks.toUpperCase()) {
+            case 'SENT':
+              remarksClass = 'remarks-sent';
+              break;
+            case 'CLAIMED':
+              remarksClass = 'remarks-claimed';
+              break;
+            case 'LOAD':
+              remarksClass = 'remarks-load';
+              break;
+            case 'CUANA':
+              remarksClass = 'remarks-cuana';
+              break;
+            case 'UNPAID':
+              remarksClass = 'remarks-unpaid';
+              break;
+            default:
+              remarksClass = '';
+          }
+          row.innerHTML = `
+            <td>${txn.id}</td>
+            <td>${txn.date}</td>
+            <td>${formattedTime}</td>
+            <td>${txn.type}</td>
+            <td>${txn.amount}</td>
+            <td>${txn.name}</td>
+            <td>${txn.ref}</td>
+            <td>${txn.fee}</td>
+            <td class="${remarksClass}">${txn.remarks}</td>
+            <td class="action-buttons">
+              <button class="edit-btn" onclick="editTransaction(${txn.id}, '${txn.date}', '${txn.time}', '${txn.type}', '${txn.amount}', '${txn.name}', '${txn.ref}', '${txn.fee}', '${txn.remarks}')">Edit</button>
+              <button class="delete-btn" onclick="deleteTransaction(${txn.id})">Delete</button>
+            </td>
+          `;
+          tbody.appendChild(row);
+        });
+
+        totalFeeDiv.textContent = `Total Fee: ${totalFee.toFixed(2)} PHP`;
+      } catch (error) {
+        console.error(error);
+        alert('Failed to fetch transactions');
+      }
+    }
+
+    // Edit transaction - populate the form with the transaction data
+    function editTransaction(id, date, time, type, amount, name, ref, fee, remarks) {
+      document.getElementById('transactionId').value = id;
+      document.getElementById('date').value = date;
+      document.getElementById('time').value = time;
+      document.getElementById('type').value = type;
+      document.getElementById('amount').value = amount;
+      document.getElementById('name').value = name;
+      document.getElementById('ref').value = ref;
+      document.getElementById('fee').value = fee;
+      document.getElementById('remarks').value = remarks;
+
+      const submitButton = document.getElementById('submitButton');
+      submitButton.textContent = 'Update Transaction';
+      document.getElementById('cancelEditButton').style.display = 'inline';
+    }
+
+    // Cancel editing - reset the form to add mode and set focus to Time field
+    function cancelEdit() {
+      const form = document.getElementById('transactionForm');
+      form.reset();
+      document.getElementById('transactionId').value = '';
+      document.getElementById('date').value = today;
+      document.getElementById('type').value = '';
+      const submitButton = document.getElementById('submitButton');
+      submitButton.textContent = 'Add Transaction';
+      document.getElementById('cancelEditButton').style.display = 'none';
+      // Set focus to the Time field after resetting the form
+      document.getElementById('time').focus();
+    }
+
+    // Delete transaction
+    async function deleteTransaction(id) {
+      if (!confirm('Are you sure you want to delete this transaction?')) {
+        return;
+      }
+
+      try {
+        const response = await fetch(`http://localhost:5000/api/transactions/${id}`, {
+          method: 'DELETE',
+        });
+        const result = await response.json();
+        if (response.ok) {
+          alert('Transaction deleted successfully!');
+          fetchTransactions();
+          fetchCurrentBalance(); // Refresh the balance after deleting
+        } else {
+          alert(`Error: ${result.error}`);
+        }
+      } catch (error) {
+        console.error(error);
+        alert('Failed to delete transaction');
+      }
+    }
+
+    // Download the summary as a PDF
+    function downloadSummary() {
+      const date = document.getElementById('fetchDate').value;
+      const sortBy = document.getElementById('sortBy').value;
+
+      if (!date) {
+        alert('Please select a date to download the summary.');
+        return;
+      }
+
+      let downloadUrl = `http://localhost:5000/api/transactions/download?date=${date}`;
+      if (sortBy) {
+        downloadUrl += `&sortBy=${sortBy}`;
+      }
+
+      window.location.href = downloadUrl;
+    }
+  </script>
 </body>
 </html>
