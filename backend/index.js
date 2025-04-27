@@ -52,8 +52,25 @@ async function initializeDatabase() {
         name TEXT NOT NULL,
         ref TEXT NOT NULL,
         fee TEXT NOT NULL,
-        remarks TEXT NOT NULL
+        remarks TEXT NOT NULL,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
       );
+    `);
+
+    // Add created_at and updated_at columns if they don't exist
+    await pool.query(`
+      DO $$ 
+      BEGIN
+        IF NOT EXISTS (SELECT 1 FROM information_schema.columns 
+                       WHERE table_name = 'transactions' AND column_name = 'created_at') THEN
+          ALTER TABLE Transactions ADD COLUMN created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP;
+        END IF;
+        IF NOT EXISTS (SELECT 1 FROM information_schema.columns 
+                       WHERE table_name = 'transactions' AND column_name = 'updated_at') THEN
+          ALTER TABLE Transactions ADD COLUMN updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP;
+        END IF;
+      END $$;
     `);
 
     await pool.query(`
@@ -143,8 +160,8 @@ app.post('/api/transactions', async (req, res) => {
   try {
     const { date, time, type, amount, name, ref, fee, remarks } = req.body;
     const result = await pool.query(
-      `INSERT INTO Transactions (date, time, type, amount, name, ref, fee, remarks)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+      `INSERT INTO Transactions (date, time, type, amount, name, ref, fee, remarks, created_at, updated_at)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
        RETURNING id`,
       [date, time, type, amount, name, ref, fee, remarks]
     );
@@ -201,6 +218,9 @@ app.get('/api/transactions', async (req, res) => {
       query += ' WHERE ' + conditions.join(' AND ');
     }
 
+    // Always sort by id in ascending order
+    query += ' ORDER BY id ASC';
+
     const result = await pool.query(query, queryParams);
     const transactions = result.rows || [];
     const totalFee = transactions.reduce((sum, txn) => sum + (parseFloat(txn.fee) || 0), 0);
@@ -250,7 +270,7 @@ app.put('/api/transactions/:id', async (req, res) => {
 
     await pool.query(
       `UPDATE Transactions 
-       SET date = $1, time = $2, type = $3, amount = $4, name = $5, ref = $6, fee = $7, remarks = $8
+       SET date = $1, time = $2, type = $3, amount = $4, name = $5, ref = $6, fee = $7, remarks = $8, updated_at = CURRENT_TIMESTAMP
        WHERE id = $9`,
       [date, time, type, amount, name, ref, fee, remarks, id]
     );
@@ -290,6 +310,8 @@ app.get('/api/transactions/download', async (req, res) => {
         return res.status(400).json({ error: `Invalid sortBy field. Must be one of: ${allowedSortFields.join(', ')}` });
       }
       query += ` ORDER BY ${sortBy}`;
+    } else {
+      query += ' ORDER BY id ASC';
     }
 
     const result = await pool.query(query, [date]);
