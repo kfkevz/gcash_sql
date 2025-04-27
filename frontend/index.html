@@ -12,22 +12,18 @@
     .total-fee { font-weight: bold; margin-top: 10px; }
     .form-group { margin-bottom: 10px; }
     button { margin: 5px; }
-    /* Container to hold the form and fee table side by side */
     .form-container { display: flex; justify-content: space-between; align-items: flex-start; }
     .transaction-form { flex: 1; margin-right: 20px; }
     .fee-table { flex: 0 0 auto; }
     .fee-table img { max-width: 300px; height: auto; }
-    /* Styles for Remarks column background colors */
-    .remarks-sent { background-color: #add8e6; color: black; } /* Light Blue */
-    .remarks-claimed { background-color: #90ee90; color: black; } /* Light Green */
-    .remarks-load { background-color: #ffdab9; color: black; } /* Light Orange */
-    .remarks-cuana { background-color: #ffffe0; color: black; } /* Light Yellow */
-    .remarks-unpaid { background-color: #ffcccb; color: black; } /* Light Red */
-    /* Style for action buttons */
+    .remarks-sent { background-color: #add8e6; color: black; }
+    .remarks-claimed { background-color: #90ee90; color: black; }
+    .remarks-load { background-color: #ffdab9; color: black; }
+    .remarks-cuana { background-color: #ffffe0; color: black; }
+    .remarks-unpaid { background-color: #ffcccb; color: black; }
     .action-buttons button { padding: 5px 10px; font-size: 12px; cursor: pointer; }
     .action-buttons .edit-btn { background-color: #4CAF50; color: white; border: none; }
     .action-buttons .delete-btn { background-color: #f44336; color: white; border: none; }
-    /* Style for balance section */
     .balance-section { margin: 10px 0; }
     .balance-section label { margin-right: 10px; }
     .balance-section input { padding: 5px; }
@@ -38,16 +34,13 @@
 <body>
   <h1>GCash Transactions Inventory</h1>
 
-  <!-- Current Balance Section -->
   <div class="balance-section">
     <label>Set Current Balance (PHP): <input type="number" id="currentBalanceInput" min="0" step="0.01" placeholder="Enter balance"></label>
     <button onclick="setCurrentBalance()">Set Balance</button>
     <div id="balanceDisplay" class="balance-display">Current Balance: 0.00 PHP</div>
   </div>
 
-  <!-- Container for form and fee table -->
   <div class="form-container">
-    <!-- Form to add/edit a transaction -->
     <div class="transaction-form">
       <form id="transactionForm">
         <input type="hidden" id="transactionId">
@@ -87,13 +80,11 @@
       </form>
     </div>
 
-    <!-- Fee table image -->
     <div class="fee-table">
       <img src="/fee-table.jpg" alt="GCash Fee Table">
     </div>
   </div>
 
-  <!-- Form to fetch transactions and download summary -->
   <div style="margin-top: 20px;">
     <label>Fetch Transactions for Date: <input type="date" id="fetchDate"></label>
     <button onclick="fetchTransactions()">Fetch</button>
@@ -111,9 +102,25 @@
       </select>
     </label>
     <button onclick="downloadSummary()">Download PDF Summary</button>
+    <label>Search in: 
+      <select id="searchField">
+        <option value="">Select Field</option>
+        <option value="id">ID</option>
+        <option value="date">Date</option>
+        <option value="time">Time</option>
+        <option value="type">Type</option>
+        <option value="amount">Amount</option>
+        <option value="name">Name</option>
+        <option value="ref">Reference</option>
+        <option value="fee">Fee</option>
+        <option value="remarks">Remarks</option>
+      </select>
+    </label>
+    <label>Keyword: <input type="text" id="searchInput" placeholder="Enter keyword"></label>
+    <button onclick="fetchTransactions()">Search</button>
+    <button onclick="clearSearch()">Clear Search</button>
   </div>
 
-  <!-- Table to display transactions -->
   <table id="transactionsTable">
     <thead>
       <tr>
@@ -134,18 +141,15 @@
   <div id="totalFee" class="total-fee"></div>
 
   <script>
-    // Set default date to today
     const today = new Date().toISOString().split('T')[0];
     document.getElementById('date').value = today;
     document.getElementById('fetchDate').value = today;
 
-    // Automatically fetch transactions and balance when the page loads
     window.onload = function() {
       fetchTransactions();
       fetchCurrentBalance();
     };
 
-    // Fetch the current balance from the backend
     async function fetchCurrentBalance() {
       try {
         const response = await fetch('http://localhost:5000/api/balance');
@@ -162,7 +166,6 @@
       }
     }
 
-    // Set the current balance
     async function setCurrentBalance() {
       const balanceInput = document.getElementById('currentBalanceInput').value;
       const balance = parseFloat(balanceInput);
@@ -181,8 +184,8 @@
         const result = await response.json();
         if (response.ok) {
           alert('Balance set successfully!');
-          document.getElementById('currentBalanceInput').value = ''; // Clear the input
-          fetchCurrentBalance(); // Refresh the balance display
+          document.getElementById('currentBalanceInput').value = '';
+          fetchCurrentBalance();
         } else {
           alert(`Error: ${result.error}`);
         }
@@ -192,7 +195,6 @@
       }
     }
 
-    // Add or update transaction
     document.getElementById('transactionForm').addEventListener('submit', async (e) => {
       e.preventDefault();
       const transactionId = document.getElementById('transactionId').value;
@@ -228,7 +230,7 @@
           alert(successMessage);
           cancelEdit();
           fetchTransactions();
-          fetchCurrentBalance(); // Refresh the balance after adding/updating
+          fetchCurrentBalance();
         } else {
           alert(`Error: ${result.error}`);
         }
@@ -238,20 +240,34 @@
       }
     });
 
-    // Fetch transactions for the selected date
     async function fetchTransactions() {
       const selectedDate = document.getElementById('fetchDate').value;
+      const searchKeyword = document.getElementById('searchInput').value;
+      const searchField = document.getElementById('searchField').value;
       const tbody = document.getElementById('transactionsBody');
       const totalFeeDiv = document.getElementById('totalFee');
 
-      if (!selectedDate) {
+      if (!selectedDate && !searchKeyword) {
         tbody.innerHTML = '';
         totalFeeDiv.textContent = '';
         return;
       }
 
       try {
-        const response = await fetch(`http://localhost:5000/api/transactions?date=${selectedDate}`);
+        let url = 'http://localhost:5000/api/transactions';
+        const params = new URLSearchParams();
+        if (selectedDate) {
+          params.append('date', selectedDate);
+        }
+        if (searchKeyword && searchField) {
+          params.append('search', searchKeyword);
+          params.append('searchField', searchField);
+        }
+        if (params.toString()) {
+          url += `?${params.toString()}`;
+        }
+
+        const response = await fetch(url);
         const { transactions, totalFee } = await response.json();
         
         tbody.innerHTML = '';
@@ -304,7 +320,12 @@
       }
     }
 
-    // Edit transaction - populate the form with the transaction data
+    function clearSearch() {
+      document.getElementById('searchInput').value = '';
+      document.getElementById('searchField').value = '';
+      fetchTransactions();
+    }
+
     function editTransaction(id, date, time, type, amount, name, ref, fee, remarks) {
       document.getElementById('transactionId').value = id;
       document.getElementById('date').value = date;
@@ -321,7 +342,6 @@
       document.getElementById('cancelEditButton').style.display = 'inline';
     }
 
-    // Cancel editing - reset the form to add mode and set focus to Time field
     function cancelEdit() {
       const form = document.getElementById('transactionForm');
       form.reset();
@@ -331,11 +351,9 @@
       const submitButton = document.getElementById('submitButton');
       submitButton.textContent = 'Add Transaction';
       document.getElementById('cancelEditButton').style.display = 'none';
-      // Set focus to the Time field after resetting the form
       document.getElementById('time').focus();
     }
 
-    // Delete transaction
     async function deleteTransaction(id) {
       if (!confirm('Are you sure you want to delete this transaction?')) {
         return;
@@ -349,7 +367,7 @@
         if (response.ok) {
           alert('Transaction deleted successfully!');
           fetchTransactions();
-          fetchCurrentBalance(); // Refresh the balance after deleting
+          fetchCurrentBalance();
         } else {
           alert(`Error: ${result.error}`);
         }
@@ -359,7 +377,6 @@
       }
     }
 
-    // Download the summary as a PDF
     function downloadSummary() {
       const date = document.getElementById('fetchDate').value;
       const sortBy = document.getElementById('sortBy').value;
