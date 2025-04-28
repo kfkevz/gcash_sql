@@ -20,6 +20,9 @@
       color: white;
       height: 100vh;
       padding: 20px;
+      display: flex;
+      flex-direction: column;
+      overflow-y: auto; /* Allow scrolling if content overflows */
     }
     .sidebar h1 {
       background-color: #0055A4; /* GCash blue */
@@ -31,6 +34,7 @@
     .sidebar ul {
       list-style: none;
       padding: 0;
+      margin: 0 0 20px 0;
     }
     .sidebar li {
       margin-bottom: 15px;
@@ -42,6 +46,35 @@
     }
     .sidebar a:hover {
       text-decoration: underline;
+    }
+    /* Latest Transaction in Sidebar */
+    .latest-transaction {
+      background-color: #2a3b3d; /* Slightly lighter background for the window */
+      border: 1px solid #4a5b5d; /* Light border to create window effect */
+      border-radius: 5px;
+      padding: 10px;
+      color: white;
+      margin-bottom: 20px; /* Space below the section */
+    }
+    .latest-transaction h2 {
+      font-size: 14px;
+      margin-bottom: 10px;
+      margin-top: 0; /* Remove top margin for tight fit */
+    }
+    .latest-transaction table {
+      width: 100%;
+      border-collapse: collapse;
+    }
+    .latest-transaction th,
+    .latest-transaction td {
+      padding: 3px;
+      font-size: 10px; /* Smaller font to fit in sidebar */
+      text-align: left;
+      word-wrap: break-word; /* Ensure long text wraps */
+    }
+    .latest-transaction th {
+      font-weight: normal;
+      color: #ccc; /* Lighter color for headers to match sidebar theme */
     }
     /* Main Content */
     .main-content {
@@ -151,8 +184,8 @@
       padding: 15px;
       border-radius: 5px;
       flex: 1;
-      max-height: 300px; /* Constrain the container height */
-      overflow: auto; /* Add scroll if content overflows */
+      max-height: 300px;
+      overflow: auto;
     }
     .fee-table h2 {
       font-size: 16px;
@@ -160,8 +193,8 @@
     }
     .fee-table img {
       width: 100%;
-      max-height: 200px; /* Constrain the image height */
-      object-fit: contain; /* Ensure the image fits without distortion */
+      max-height: 200px;
+      object-fit: contain;
     }
     /* Fetch and Search */
     .fetch-search {
@@ -292,6 +325,44 @@
         <li><a href="#">Reports</a></li>
         <li><a href="#">Settings</a></li>
       </ul>
+      <!-- Latest Transaction -->
+      <div class="latest-transaction">
+        <h2>Latest Transaction</h2>
+        <table>
+          <tr>
+            <th>Date</th>
+            <td id="latestDate">-</td>
+          </tr>
+          <tr>
+            <th>Time</th>
+            <td id="latestTime">-</td>
+          </tr>
+          <tr>
+            <th>Type</th>
+            <td id="latestType">-</td>
+          </tr>
+          <tr>
+            <th>Amount</th>
+            <td id="latestAmount">-</td>
+          </tr>
+          <tr>
+            <th>Name</th>
+            <td id="latestName">-</td>
+          </tr>
+          <tr>
+            <th>Ref</th>
+            <td id="latestRef">-</td>
+          </tr>
+          <tr>
+            <th>Fee</th>
+            <td id="latestFee">-</td>
+          </tr>
+          <tr>
+            <th>Remarks</th>
+            <td id="latestRemarks">-</td>
+          </tr>
+        </table>
+      </div>
     </div>
 
     <!-- Main Content -->
@@ -458,11 +529,12 @@
       document.getElementById('fetchDate').value = today;
     }
 
-    // Fetch initial balance and transactions on page load
+    // Fetch initial balance, transactions, and latest transaction on page load
     window.onload = () => {
       setTodayDate();
       fetchBalance();
       fetchTransactions();
+      fetchLatestTransaction();
     };
 
     async function fetchBalance() {
@@ -503,8 +575,39 @@
       }
     }
 
+    async function fetchLatestTransaction() {
+      try {
+        const response = await fetch('http://localhost:5000/api/transactions?sortBy=id&order=desc&limit=1');
+        const data = await response.json();
+        const latest = data.transactions && data.transactions.length > 0 ? data.transactions[0] : null;
+
+        if (latest) {
+          document.getElementById('latestDate').textContent = latest.date;
+          document.getElementById('latestTime').textContent = latest.time.split(':').slice(0, 2).join(':');
+          document.getElementById('latestType').textContent = latest.type;
+          document.getElementById('latestAmount').textContent = latest.amount;
+          document.getElementById('latestName').textContent = latest.name;
+          document.getElementById('latestRef').textContent = latest.ref;
+          document.getElementById('latestFee').textContent = latest.fee;
+          document.getElementById('latestRemarks').textContent = latest.remarks;
+        } else {
+          // Clear the fields if no transactions exist
+          document.getElementById('latestDate').textContent = '-';
+          document.getElementById('latestTime').textContent = '-';
+          document.getElementById('latestType').textContent = '-';
+          document.getElementById('latestAmount').textContent = '-';
+          document.getElementById('latestName').textContent = '-';
+          document.getElementById('latestRef').textContent = '-';
+          document.getElementById('latestFee').textContent = '-';
+          document.getElementById('latestRemarks').textContent = '-';
+        }
+      } catch (error) {
+        console.error('Error fetching latest transaction:', error);
+      }
+    }
+
     async function fetchTransactions() {
-      const date = document.getElementById('fetchDate').value || today; // Use today if no date is selected
+      const date = document.getElementById('fetchDate').value || today;
       const searchField = document.getElementById('searchField').value;
       const searchKeyword = document.getElementById('searchKeyword').value;
       const url = new URL('http://localhost:5000/api/transactions');
@@ -561,6 +664,9 @@
           `;
           tableBody.appendChild(row);
         });
+
+        // Fetch the latest transaction after updating the table
+        fetchLatestTransaction();
       } catch (error) {
         console.error('Error fetching transactions:', error);
       }
