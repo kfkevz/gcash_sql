@@ -285,14 +285,15 @@ app.put('/api/transactions/:id', async (req, res) => {
 });
 
 function getRemarksColor(remark) {
-  switch (remark.toUpperCase()) {
-    case 'SENT': return '#ADD8E6';
-    case 'CLAIMED': return '#90EE90';
-    case 'LOAD': return '#FFDAB9';
-    case 'CUANA': return '#FFFFE0';
-    case 'UNPAID': return '#FFCCCB';
-    default: return '#FFFFFF';
-  }
+  const remarkUpper = remark.toUpperCase();
+  if (remarkUpper.includes('MAYA')) return '#006400'; // Dark green
+  if (remarkUpper.includes('BILLS PAYMENT')) return '#008000'; // Green
+  if (remarkUpper.includes('CLAIMED') || remarkUpper.includes('CLAIM')) return '#90EE90'; // Light green
+  if (remarkUpper.includes('CUANA')) return '#FFFF00'; // Yellow
+  if (remarkUpper.includes('LOAD')) return '#FFDAB9'; // Light orange
+  if (remarkUpper.includes('SENT')) return '#ADD8E6'; // Blue
+  if (remarkUpper.includes('UNPAID') || remarkUpper.includes('UNCLAIMED')) return '#FFCCCB'; // Light red
+  return '#FFFFFF'; // Default white
 }
 
 app.get('/api/transactions/download', async (req, res) => {
@@ -325,114 +326,113 @@ app.get('/api/transactions/download', async (req, res) => {
       return acc;
     }, {});
 
-    const doc = new PDFDocument({ margin: 50 });
+    const doc = new PDFDocument({ size: 'A4', margin: 30 });
     res.setHeader('Content-Type', 'application/pdf');
     res.setHeader('Content-Disposition', `attachment; filename="transaction-summary-${date}.pdf"`);
 
     doc.pipe(res);
 
-    doc.fontSize(20).text('GCash Transactions Summary', { align: 'center' });
-    doc.moveDown();
+    // Title
+    doc.fontSize(16).text('GCash Transactions Summary', { align: 'center' });
+    doc.moveDown(0.5);
 
-    doc.fontSize(14).text(`Date: ${date}`);
-    doc.text(`Total Transactions: ${totalTransactions}`);
-    doc.text(`Total Fee (PHP): ${totalFee.toFixed(2)}`);
-    doc.moveDown();
+    // Summary Section (Left and Right Columns)
+    const startY = doc.y;
+    const lineSpacing = 10; // Reduced line spacing for compression
+    doc.fontSize(10);
 
-    doc.fontSize(12).text('Breakdown by Type:');
+    // Left Column: Date, Total Transactions, Total Fee
+    doc.text(`Date: ${date}`, 30, startY);
+    doc.text(`Total Transactions: ${totalTransactions}`, 30, startY + lineSpacing);
+    doc.text(`Total Fee (PHP): ${totalFee.toFixed(2)}`, 30, startY + 2 * lineSpacing);
+
+    // Right Column: Breakdown by Type
+    const rightColumnX = 300;
+    doc.text('Breakdown by Type:', rightColumnX, startY);
+    let typeY = startY + lineSpacing;
     Object.entries(totalsByType).forEach(([type, fee]) => {
-      doc.text(`${type}: ${fee.toFixed(2)} PHP`);
+      doc.text(`${type}: ${fee.toFixed(2)} PHP`, rightColumnX, typeY);
+      typeY += lineSpacing;
     });
-    doc.moveDown(2);
 
-    if (transactions.length > 0) {
-      doc.fontSize(16).text('Detailed Transactions', { align: 'center' });
-      doc.moveDown();
+    doc.moveDown(1);
 
-      const headers = ['ID', 'Date', 'Time', 'Type', 'Amount', 'Name', 'Ref', 'Fee', 'Remarks'];
-      const colWidths = [50, 80, 60, 60, 60, 80, 60, 50, 80];
-      const tableWidth = colWidths.reduce((sum, width) => sum + width, 0);
-      const pageWidth = 612 - 100;
-      const startX = (pageWidth - tableWidth) / 2 + 50;
-      const rowHeight = 20;
-      const headerHeight = 20;
-      let x = startX;
-      let y = doc.y;
+    // Detailed Transactions
+    doc.fontSize(12).text('Detailed Transactions', { align: 'center' });
+    doc.moveDown(0.5);
 
-      doc.fontSize(10).font('Helvetica-Bold');
-      headers.forEach((header, i) => {
-        doc.text(header, x, y + 5, { width: colWidths[i], align: 'center' });
-        x += colWidths[i];
-      });
+    // Table Headers
+    const tableTop = doc.y;
+    const colWidths = [30, 70, 50, 50, 50, 60, 60, 40, 70]; // Adjusted column widths
+    const headers = ['ID', 'Date', 'Time', 'Type', 'Amount', 'Name', 'Ref', 'Fee', 'Remarks'];
+    let xPos = 30;
 
-      x = startX;
-      headers.forEach((_, i) => {
-        doc.rect(x, y, colWidths[i], headerHeight)
-           .lineWidth(1)
-           .strokeColor('#000000')
-           .stroke();
-        x += colWidths[i];
-      });
+    doc.fontSize(8).font('Helvetica-Bold');
+    headers.forEach((header, i) => {
+      doc.rect(xPos, tableTop, colWidths[i], 20).fillAndStroke('#007bff', '#000000');
+      doc.fillColor('white').text(header, xPos + 2, tableTop + 6, { width: colWidths[i], align: 'center' });
+      xPos += colWidths[i];
+    });
 
-      y += headerHeight;
+    // Table Rows
+    doc.font('Helvetica').fillColor('black');
+    let yPos = tableTop + 20;
+    transactions.forEach((txn, index) => {
+      if (yPos > doc.page.height - 50) {
+        doc.addPage();
+        yPos = 30;
+        xPos = 30;
+        doc.fontSize(8).font('Helvetica-Bold');
+        headers.forEach((header, i) => {
+          doc.rect(xPos, yPos, colWidths[i], 20).fillAndStroke('#007bff', '#000000');
+          doc.fillColor('white').text(header, xPos + 2, yPos + 6, { width: colWidths[i], align: 'center' });
+          xPos += colWidths[i];
+        });
+        doc.font('Helvetica').fillColor('black');
+        yPos += 20;
+      }
 
-      let currentPageRows = 0;
+      xPos = 30;
+      const row = [
+        txn.id.toString(),
+        txn.date,
+        txn.time.split(':').slice(0, 2).join(':'),
+        txn.type,
+        txn.amount.toString(),
+        txn.name,
+        txn.ref,
+        txn.fee.toString(),
+        txn.remarks,
+      ];
 
-      doc.font('Helvetica');
-      transactions.forEach((txn, index) => {
-        x = startX;
+      // Set background color for Remarks
+      const remarksColor = getRemarksColor(txn.remarks);
 
-        doc.text(txn.id.toString(), x, y + 5, { width: colWidths[0], align: 'center' }); x += colWidths[0];
-        doc.text(txn.date, x, y + 5, { width: colWidths[1], align: 'center' }); x += colWidths[1];
-        doc.text(txn.time, x, y + 5, { width: colWidths[2], align: 'center' }); x += colWidths[2];
-        doc.text(txn.type, x, y + 5, { width: colWidths[3], align: 'center' }); x += colWidths[3];
-        doc.text(txn.amount, x, y + 5, { width: colWidths[4], align: 'center' }); x += colWidths[4];
-        doc.text(txn.name, x, y + 5, { width: colWidths[5], align: 'center' }); x += colWidths[5];
-        doc.text(txn.ref, x, y + 5, { width: colWidths[6], align: 'center' }); x += colWidths[6];
-        doc.text(txn.fee, x, y + 5, { width: colWidths[7], align: 'center' }); x += colWidths[7];
-
-        const remarksBgColor = getRemarksColor(txn.remarks);
-        doc.rect(x, y, colWidths[8], rowHeight).fill(remarksBgColor).fillColor('black');
-        doc.text(txn.remarks, x + 2, y + 5, { width: colWidths[8] - 4, align: 'center' });
-
-        x = startX;
-        for (let i = 0; i < colWidths.length; i++) {
-          doc.rect(x, y, colWidths[i], rowHeight)
-             .lineWidth(0.5)
-             .strokeColor('#000000')
-             .stroke();
-          x += colWidths[i];
+      row.forEach((cell, i) => {
+        if (i === 8) { // Remarks column
+          doc.rect(xPos, yPos, colWidths[i], 15).fillAndStroke(remarksColor, '#000000');
+          
+          // Dynamically adjust font size for Remarks to fit within the column
+          let fontSize = 8;
+          doc.font('Helvetica-Bold').fontSize(fontSize); // Set to bold for Remarks
+          let textWidth = doc.widthOfString(cell);
+          const maxWidth = colWidths[i] - 4; // Account for padding
+          while (textWidth > maxWidth && fontSize > 4) {
+            fontSize -= 0.5;
+            doc.fontSize(fontSize);
+            textWidth = doc.widthOfString(cell);
+          }
+          
+          doc.fillColor('black').text(cell, xPos + 2, yPos + 3, { width: colWidths[i], align: 'center' });
+        } else {
+          doc.rect(xPos, yPos, colWidths[i], 15).stroke();
+          doc.font('Helvetica').fontSize(8).text(cell, xPos + 2, yPos + 3, { width: colWidths[i], align: 'center' });
         }
-
-        y += rowHeight;
-        currentPageRows++;
-
-        if (y > 700 && index < transactions.length - 1) {
-          doc.addPage();
-          y = 50;
-          currentPageRows = 0;
-          x = startX;
-
-          doc.fontSize(10).font('Helvetica-Bold');
-          headers.forEach((header, i) => {
-            doc.text(header, x, y + 5, { width: colWidths[i], align: 'center' });
-            x += colWidths[i];
-          });
-
-          x = startX;
-          headers.forEach((_, i) => {
-            doc.rect(x, y, colWidths[i], headerHeight)
-               .lineWidth(1)
-               .strokeColor('#000000')
-               .stroke();
-            x += colWidths[i];
-          });
-
-          y += headerHeight;
-          doc.font('Helvetica');
-        }
+        xPos += colWidths[i];
       });
-    }
+
+      yPos += 15;
+    });
 
     doc.end();
   } catch (error) {
