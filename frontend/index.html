@@ -4,6 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>GCash Transactions Dashboard</title>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   <style>
     body {
       font-family: Arial, sans-serif;
@@ -22,10 +23,10 @@
       padding: 20px;
       display: flex;
       flex-direction: column;
-      overflow-y: auto; /* Allow scrolling if content overflows */
+      overflow-y: auto;
     }
     .sidebar h1 {
-      background-color: #0055A4; /* GCash blue */
+      background-color: #0055A4;
       padding: 10px;
       font-size: 18px;
       margin: 0 0 20px 0;
@@ -43,23 +44,28 @@
       color: white;
       text-decoration: none;
       font-size: 14px;
+      cursor: pointer;
     }
     .sidebar a:hover {
       text-decoration: underline;
     }
+    .sidebar a.active {
+      font-weight: bold;
+      color: #007bff;
+    }
     /* Latest Transaction in Sidebar */
     .latest-transaction {
-      background-color: #2a3b3d; /* Slightly lighter background for the window */
-      border: 1px solid #4a5b5d; /* Light border to create window effect */
+      background-color: #2a3b3d;
+      border: 1px solid #4a5b5d;
       border-radius: 5px;
       padding: 10px;
       color: white;
-      margin-bottom: 20px; /* Space below the section */
+      margin-bottom: 20px;
     }
     .latest-transaction h2 {
       font-size: 14px;
       margin-bottom: 10px;
-      margin-top: 0; /* Remove top margin for tight fit */
+      margin-top: 0;
     }
     .latest-transaction table {
       width: 100%;
@@ -68,18 +74,24 @@
     .latest-transaction th,
     .latest-transaction td {
       padding: 3px;
-      font-size: 10px; /* Smaller font to fit in sidebar */
+      font-size: 10px;
       text-align: left;
-      word-wrap: break-word; /* Ensure long text wraps */
+      word-wrap: break-word;
     }
     .latest-transaction th {
       font-weight: normal;
-      color: #ccc; /* Lighter color for headers to match sidebar theme */
+      color: #ccc;
     }
     /* Main Content */
     .main-content {
       flex: 1;
       padding: 20px;
+    }
+    .content-section {
+      display: none;
+    }
+    .content-section.active {
+      display: block;
     }
     /* Summary Cards */
     .summary-cards {
@@ -191,10 +203,21 @@
       font-size: 16px;
       margin-bottom: 15px;
     }
-    .fee-table img {
+    .fee-table table {
       width: 100%;
-      max-height: 200px;
-      object-fit: contain;
+      border-collapse: collapse;
+    }
+    .fee-table th,
+    .fee-table td {
+      padding: 10px;
+      text-align: center;
+      font-size: 14px;
+      border-bottom: 1px solid #eee;
+    }
+    .fee-table th {
+      background-color: #f8f9fa;
+      font-weight: normal;
+      color: #666;
     }
     /* Fetch and Search */
     .fetch-search {
@@ -306,6 +329,51 @@
       padding: 10px;
       font-size: 14px;
     }
+    /* Reports Section */
+    .reports-section {
+      background-color: white;
+      padding: 15px;
+      border-radius: 5px;
+      margin-bottom: 20px;
+    }
+    .reports-section h2 {
+      font-size: 16px;
+      margin-bottom: 15px;
+    }
+    .reports-section table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-bottom: 20px;
+    }
+    .reports-section th,
+    .reports-section td {
+      padding: 10px;
+      text-align: center;
+      font-size: 14px;
+      border-bottom: 1px solid #eee;
+    }
+    .reports-section th {
+      background-color: #f8f9fa;
+      font-weight: normal;
+      color: #666;
+    }
+    .fee-comparison {
+      display: flex;
+      gap: 20px;
+      align-items: center;
+    }
+    .fee-comparison-text {
+      flex: 1;
+    }
+    .fee-comparison-text p {
+      font-size: 14px;
+      margin: 5px 0;
+    }
+    .fee-comparison-chart {
+      flex: 1;
+      max-width: 300px;
+      height: 200px;
+    }
     /* Remarks Colors */
     .remarks-sent { background-color: #ADD8E6; }
     .remarks-claimed { background-color: #90EE90; }
@@ -320,10 +388,10 @@
     <div class="sidebar">
       <h1>GCash Inventory</h1>
       <ul>
-        <li><a href="#">Dashboard</a></li>
-        <li><a href="#">Transactions</a></li>
-        <li><a href="#">Reports</a></li>
-        <li><a href="#">Settings</a></li>
+        <li><a onclick="showSection('dashboard')" class="active">Dashboard</a></li>
+        <li><a onclick="showSection('transactions')">Transactions</a></li>
+        <li><a onclick="showSection('reports')">Reports</a></li>
+        <li><a onclick="showSection('settings')">Settings</a></li>
       </ul>
       <!-- Latest Transaction -->
       <div class="latest-transaction">
@@ -367,161 +435,298 @@
 
     <!-- Main Content -->
     <div class="main-content">
-      <!-- Summary Cards -->
-      <div class="summary-cards">
-        <div class="summary-card">
-          <h2>Total Transactions</h2>
-          <p id="totalTransactions">0</p>
-        </div>
-        <div class="summary-card">
-          <h2>Total Fees</h2>
-          <p id="totalFees">0.00 PHP</p>
-        </div>
-        <div class="summary-card">
-          <h2>Cash In</h2>
-          <p id="totalCashIn">0.00 PHP</p>
-        </div>
-        <div class="summary-card">
-          <h2>Current Balance</h2>
-          <p id="currentBalance">0.00 PHP</p>
-          <div class="balance-input">
-            <input id="balanceInput" type="number" step="0.01" placeholder="Set balance">
-            <button onclick="setBalance()">Set</button>
+      <!-- Dashboard Section -->
+      <div id="dashboard-section" class="content-section active">
+        <!-- Summary Cards -->
+        <div class="summary-cards">
+          <div class="summary-card">
+            <h2>Total Transactions</h2>
+            <p id="totalTransactions">0</p>
           </div>
-        </div>
-      </div>
-
-      <!-- Transaction Form and Fee Table -->
-      <div class="form-and-fee">
-        <!-- Form -->
-        <div class="transaction-form">
-          <h2>Add Transaction</h2>
-          <form id="transactionForm" onsubmit="event.preventDefault(); saveTransaction();">
-            <input type="hidden" id="transactionId">
-            <div class="form-grid">
-              <div>
-                <label>Date:</label>
-                <input type="date" id="date" required>
-              </div>
-              <div>
-                <label>Time:</label>
-                <input type="time" id="time" required>
-              </div>
-              <div>
-                <label>Type:</label>
-                <select id="type" required>
-                  <option value="Cash In">Cash In</option>
-                  <option value="Cash Out">Cash Out</option>
-                  <option value="Load">Load</option>
-                </select>
-              </div>
-              <div>
-                <label>Amount:</label>
-                <input type="number" id="amount" step="0.01" required>
-              </div>
-              <div>
-                <label>Name:</label>
-                <input type="text" id="name" required>
-              </div>
-              <div>
-                <label>Reference:</label>
-                <input type="text" id="ref" required>
-              </div>
-              <div>
-                <label>Fee:</label>
-                <input type="number" id="fee" step="0.01" required>
-              </div>
-              <div>
-                <label>Remarks:</label>
-                <input type="text" id="remarks" required>
-              </div>
-              <button type="submit">Add Transaction</button>
+          <div class="summary-card">
+            <h2>Total Fees</h2>
+            <p id="totalFees">0.00 PHP</p>
+          </div>
+          <div class="summary-card">
+            <h2>Cash In</h2>
+            <p id="totalCashIn">0.00 PHP</p>
+          </div>
+          <div class="summary-card">
+            <h2>Current Balance</h2>
+            <p id="currentBalance">0.00 PHP</p>
+            <div class="balance-input">
+              <input id="balanceInput" type="number" step="0.01" placeholder="Set balance">
+              <button onclick="setBalance()">Set</button>
             </div>
-          </form>
+          </div>
         </div>
 
-        <!-- Fee Table -->
-        <div class="fee-table">
-          <h2>Fee Table</h2>
-          <img src="/fee-table.jpg" alt="GCash Fee Table">
+        <!-- Transaction Form and Fee Table -->
+        <div class="form-and-fee">
+          <!-- Form -->
+          <div class="transaction-form">
+            <h2>Add Transaction</h2>
+            <form id="transactionForm" onsubmit="event.preventDefault(); saveTransaction();">
+              <input type="hidden" id="transactionId">
+              <div class="form-grid">
+                <div>
+                  <label>Date:</label>
+                  <input type="date" id="date" required>
+                </div>
+                <div>
+                  <label>Time:</label>
+                  <input type="time" id="time" required>
+                </div>
+                <div>
+                  <label>Type:</label>
+                  <select id="type" required>
+                    <option value="Cash In">Cash In</option>
+                    <option value="Cash Out">Cash Out</option>
+                    <option value="Load">Load</option>
+                  </select>
+                </div>
+                <div>
+                  <label>Amount:</label>
+                  <input type="number" id="amount" step="0.01" required>
+                </div>
+                <div>
+                  <label>Name:</label>
+                  <input type="text" id="name" required>
+                </div>
+                <div>
+                  <label>Reference:</label>
+                  <input type="text" id="ref" required>
+                </div>
+                <div>
+                  <label>Fee:</label>
+                  <input type="number" id="fee" step="0.01" required>
+                </div>
+                <div>
+                  <label>Remarks:</label>
+                  <input type="text" id="remarks" required>
+                </div>
+                <button type="submit">Add Transaction</button>
+              </div>
+            </form>
+          </div>
+
+          <!-- Fee Table -->
+          <div class="fee-table">
+            <h2>Fee Table</h2>
+            <table>
+              <thead>
+                <tr>
+                  <th>Amount Range (PHP)</th>
+                  <th>Fee (PHP)</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td>1 - 100</td>
+                  <td>5</td>
+                </tr>
+                <tr>
+                  <td>101 - 500</td>
+                  <td>10</td>
+                </tr>
+                <tr>
+                  <td>501 - 1000</td>
+                  <td>15</td>
+                </tr>
+                <tr>
+                  <td>1001 - 1500</td>
+                  <td>20</td>
+                </tr>
+                <tr>
+                  <td>1501 - 2000</td>
+                  <td>30</td>
+                </tr>
+                <tr>
+                  <td>2001 - 2500</td>
+                  <td>35</td>
+                </tr>
+                <tr>
+                  <td>2501 - 3000</td>
+                  <td>45</td>
+                </tr>
+                <tr>
+                  <td>3001 - 3500</td>
+                  <td>50</td>
+                </tr>
+                <tr>
+                  <td>3501 - 4000</td>
+                  <td>60</td>
+                </tr>
+                <tr>
+                  <td>4001 - 4500</td>
+                  <td>65</td>
+                </tr>
+                <tr>
+                  <td>4501 - 5000</td>
+                  <td>75</td>
+                </tr>
+                <tr>
+                  <td>5001 - 5500</td>
+                  <td>80</td>
+                </tr>
+                <tr>
+                  <td>5501 - 6000</td>
+                  <td>90</td>
+                </tr>
+                <tr>
+                  <td>6001 - 6500</td>
+                  <td>95</td>
+                </tr>
+                <tr>
+                  <td>6501 - 7000</td>
+                  <td>105</td>
+                </tr>
+                <tr>
+                  <td>7001 - 7500</td>
+                  <td>110</td>
+                </tr>
+                <tr>
+                  <td>7501 - 8000</td>
+                  <td>120</td>
+                </tr>
+                <tr>
+                  <td>8001 - 8500</td>
+                  <td>125</td>
+                </tr>
+                <tr>
+                  <td>8501 - 9000</td>
+                  <td>135</td>
+                </tr>
+                <tr>
+                  <td>9001 - 9500</td>
+                  <td>140</td>
+                </tr>
+                <tr>
+                  <td>9501 - 10000</td>
+                  <td>150</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
         </div>
       </div>
 
-      <!-- Fetch and Search -->
-      <div class="fetch-search">
-        <h2>Fetch Transactions for Date:</h2>
-        <div class="flex">
-          <div>
-            <label>Fetch Transactions for Date:</label>
-            <input type="date" id="fetchDate">
+      <!-- Transactions Section -->
+      <div id="transactions-section" class="content-section">
+        <!-- Fetch and Search -->
+        <div class="fetch-search">
+          <h2>Fetch Transactions for Date:</h2>
+          <div class="flex">
+            <div>
+              <label>Fetch Transactions for Date:</label>
+              <input type="date" id="fetchDate">
+            </div>
+            <div>
+              <label>Sort By (Optional):</label>
+              <select id="sortBy">
+                <option value="id">None</option>
+                <option value="id">ID</option>
+                <option value="time">Time</option>
+                <option value="type">Type</option>
+                <option value="amount">Amount</option>
+                <option value="name">Name</option>
+                <option value="ref">Reference</option>
+                <option value="fee">Fee</option>
+                <option value="remarks">Remarks</option>
+              </select>
+            </div>
+            <button onclick="fetchTransactions()" class="fetch-btn">Fetch</button>
+            <button onclick="downloadSummary()" class="download-btn">Download PDF Summary</button>
+            <div>
+              <label>Search in:</label>
+              <select id="searchField">
+                <option value="id">ID</option>
+                <option value="date">Date</option>
+                <option value="time">Time</option>
+                <option value="type">Type</option>
+                <option value="amount">Amount</option>
+                <option value="name">Name</option>
+                <option value="ref">Reference</option>
+                <option value="fee">Fee</option>
+                <option value="remarks">Remarks</option>
+              </select>
+            </div>
+            <div>
+              <label>Keyword:</label>
+              <input type="text" id="searchKeyword" placeholder="Enter keyword">
+            </div>
+            <button onclick="fetchTransactions()" class="search-btn">Search</button>
+            <button onclick="clearSearch()" class="clear-btn">Clear Search</button>
           </div>
-          <div>
-            <label>Sort By (Optional):</label>
-            <select id="sortBy">
-              <option value="id">None</option>
-              <option value="id">ID</option>
-              <option value="time">Time</option>
-              <option value="type">Type</option>
-              <option value="amount">Amount</option>
-              <option value="name">Name</option>
-              <option value="ref">Reference</option>
-              <option value="fee">Fee</option>
-              <option value="remarks">Remarks</option>
-            </select>
-          </div>
-          <button onclick="fetchTransactions()" class="fetch-btn">Fetch</button>
-          <button onclick="downloadSummary()" class="download-btn">Download PDF Summary</button>
-          <div>
-            <label>Search in:</label>
-            <select id="searchField">
-              <option value="id">ID</option>
-              <option value="date">Date</option>
-              <option value="time">Time</option>
-              <option value="type">Type</option>
-              <option value="amount">Amount</option>
-              <option value="name">Name</option>
-              <option value="ref">Reference</option>
-              <option value="fee">Fee</option>
-              <option value="remarks">Remarks</option>
-            </select>
-          </div>
-          <div>
-            <label>Keyword:</label>
-            <input type="text" id="searchKeyword" placeholder="Enter keyword">
-          </div>
-          <button onclick="fetchTransactions()" class="search-btn">Search</button>
-          <button onclick="clearSearch()" class="clear-btn">Clear Search</button>
+        </div>
+
+        <!-- Transaction Table -->
+        <div class="transaction-table">
+          <table>
+            <thead>
+              <tr>
+                <th>ID</th>
+                <th>Date</th>
+                <th>Time</th>
+                <th>Type</th>
+                <th>Amount</th>
+                <th>Name</th>
+                <th>Reference</th>
+                <th>Fee</th>
+                <th>Remarks</th>
+                <th>Actions</th>
+              </tr>
+            </thead>
+            <tbody id="transactionTable">
+            </tbody>
+          </table>
+          <div class="total-fee" id="totalFeeDisplay">Total Fee: 0.00 PHP</div>
         </div>
       </div>
 
-      <!-- Transaction Table -->
-      <div class="transaction-table">
-        <table>
-          <thead>
-            <tr>
-              <th>ID</th>
-              <th>Date</th>
-              <th>Time</th>
-              <th>Type</th>
-              <th>Amount</th>
-              <th>Name</th>
-              <th>Reference</th>
-              <th>Fee</th>
-              <th>Remarks</th>
-              <th>Actions</th>
-            </tr>
-          </thead>
-          <tbody id="transactionTable">
-          </tbody>
-        </table>
-        <div class="total-fee" id="totalFeeDisplay">Total Fee: 0.00 PHP</div>
+      <!-- Reports Section -->
+      <div id="reports-section" class="content-section">
+        <div class="reports-section">
+          <h2>Monthly Transaction Reports</h2>
+          <table>
+            <thead>
+              <tr>
+                <th>Month</th>
+                <th>Total Transactions</th>
+                <th>Total Amount (PHP)</th>
+                <th>Total Fee (PHP)</th>
+              </tr>
+            </thead>
+            <tbody id="monthlyTransactionsTable">
+            </tbody>
+          </table>
+          <div class="fee-comparison">
+            <div class="fee-comparison-text">
+              <h2>Fee Comparison: This Month vs Last Month</h2>
+              <p id="thisMonthFee">This Month (April 2025): 0.00 PHP</p>
+              <p id="lastMonthFee">Last Month (March 2025): 0.00 PHP</p>
+              <p id="feeDifference">Difference: 0.00 PHP</p>
+            </div>
+            <div class="fee-comparison-chart">
+              <canvas id="feeComparisonChart"></canvas>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Settings Section (Placeholder) -->
+      <div id="settings-section" class="content-section">
+        <div class="reports-section">
+          <h2>Settings</h2>
+          <p>Settings section to be implemented.</p>
+        </div>
       </div>
     </div>
   </div>
 
   <script>
-    // Set today's date (2025-04-28)
-    const today = '2025-04-28';
+    // Set today's date (2025-04-29)
+    const today = '2025-04-29';
 
     // Function to set the date fields to today
     function setTodayDate() {
@@ -529,7 +734,29 @@
       document.getElementById('fetchDate').value = today;
     }
 
-    // Fetch initial balance, transactions, and latest transaction on page load
+    // Function to show the selected section
+    function showSection(section) {
+      // Hide all sections
+      document.querySelectorAll('.content-section').forEach(s => s.classList.remove('active'));
+      // Show the selected section
+      document.getElementById(`${section}-section`).classList.add('active');
+      // Update active link in sidebar
+      document.querySelectorAll('.sidebar a').forEach(a => a.classList.remove('active'));
+      document.querySelector(`.sidebar a[onclick="showSection('${section}')"]`).classList.add('active');
+
+      // Fetch data based on section
+      if (section === 'dashboard') {
+        fetchBalance();
+        fetchTransactions();
+      } else if (section === 'transactions') {
+        fetchTransactions();
+      } else if (section === 'reports') {
+        fetchMonthlyTransactions();
+        fetchFeeComparison();
+      }
+    }
+
+    // Fetch initial data on page load
     window.onload = () => {
       setTodayDate();
       fetchBalance();
@@ -591,7 +818,6 @@
           document.getElementById('latestFee').textContent = latest.fee;
           document.getElementById('latestRemarks').textContent = latest.remarks;
         } else {
-          // Clear the fields if no transactions exist
           document.getElementById('latestDate').textContent = '-';
           document.getElementById('latestTime').textContent = '-';
           document.getElementById('latestType').textContent = '-';
@@ -672,6 +898,83 @@
       }
     }
 
+    async function fetchMonthlyTransactions() {
+      try {
+        const response = await fetch('http://localhost:5000/api/reports/monthly-transactions');
+        const data = await response.json();
+        const monthlyData = data.monthlyTransactions || [];
+
+        const tableBody = document.getElementById('monthlyTransactionsTable');
+        tableBody.innerHTML = '';
+        monthlyData.forEach(month => {
+          const row = document.createElement('tr');
+          row.innerHTML = `
+            <td>${month.month}</td>
+            <td>${month.totalTransactions}</td>
+            <td>${month.totalAmount.toFixed(2)}</td>
+            <td>${month.totalFee.toFixed(2)}</td>
+          `;
+          tableBody.appendChild(row);
+        });
+      } catch (error) {
+        console.error('Error fetching monthly transactions:', error);
+      }
+    }
+
+    let feeChart = null;
+
+    async function fetchFeeComparison() {
+      try {
+        const response = await fetch('http://localhost:5000/api/reports/fee-comparison');
+        const data = await response.json();
+        const { thisMonthFee, lastMonthFee } = data;
+
+        // Update text
+        document.getElementById('thisMonthFee').textContent = `This Month (April 2025): ${thisMonthFee.toFixed(2)} PHP`;
+        document.getElementById('lastMonthFee').textContent = `Last Month (March 2025): ${lastMonthFee.toFixed(2)} PHP`;
+        document.getElementById('feeDifference').textContent = `Difference: ${(thisMonthFee - lastMonthFee).toFixed(2)} PHP`;
+
+        // Destroy existing chart if it exists
+        if (feeChart) {
+          feeChart.destroy();
+        }
+
+        // Create bar chart
+        const ctx = document.getElementById('feeComparisonChart').getContext('2d');
+        feeChart = new Chart(ctx, {
+          type: 'bar',
+          data: {
+            labels: ['Last Month (Mar 2025)', 'This Month (Apr 2025)'],
+            datasets: [{
+              label: 'Total Fee (PHP)',
+              data: [lastMonthFee, thisMonthFee],
+              backgroundColor: ['#007bff', '#28a745'],
+              borderColor: ['#0056b3', '#218838'],
+              borderWidth: 1
+            }]
+          },
+          options: {
+            scales: {
+              y: {
+                beginAtZero: true,
+                title: {
+                  display: true,
+                  text: 'Total Fee (PHP)'
+                }
+              }
+            },
+            plugins: {
+              legend: {
+                display: false
+              }
+            }
+          }
+        });
+      } catch (error) {
+        console.error('Error fetching fee comparison:', error);
+      }
+    }
+
     async function saveTransaction() {
       const id = document.getElementById('transactionId').value;
       const transaction = {
@@ -700,7 +1003,6 @@
           clearForm();
           fetchTransactions();
           fetchBalance();
-          // Focus on the time field and highlight its content
           const timeField = document.getElementById('time');
           timeField.focus();
           timeField.select();
@@ -726,7 +1028,7 @@
           document.getElementById('ref').value = txn.ref;
           document.getElementById('fee').value = txn.fee;
           document.getElementById('remarks').value = txn.remarks;
-          // Focus on the time field and highlight its content
+          showSection('dashboard');
           const timeField = document.getElementById('time');
           timeField.focus();
           timeField.select();
@@ -757,7 +1059,6 @@
     function clearForm() {
       document.getElementById('transactionForm').reset();
       document.getElementById('transactionId').value = '';
-      // Reset the date to today
       document.getElementById('date').value = today;
     }
 
