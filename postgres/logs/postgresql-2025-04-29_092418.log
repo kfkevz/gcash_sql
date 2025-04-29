@@ -1,0 +1,155 @@
+2025-04-29 09:24:18.564 UTC [48] LOG:  starting PostgreSQL 16.8 (Debian 16.8-1.pgdg120+1) on x86_64-pc-linux-gnu, compiled by gcc (Debian 12.2.0-14) 12.2.0, 64-bit
+2025-04-29 09:24:18.566 UTC [48] LOG:  listening on Unix socket "/var/run/postgresql/.s.PGSQL.5432"
+2025-04-29 09:24:18.571 UTC [52] LOG:  database system was shut down at 2025-04-29 09:24:18 UTC
+2025-04-29 09:24:18.574 UTC [48] LOG:  database system is ready to accept connections
+2025-04-29 09:24:18.704 UTC [58] LOG:  statement: SELECT 1 FROM pg_database WHERE datname = 'gcash_db' ;
+2025-04-29 09:24:18.726 UTC [60] LOG:  statement: CREATE DATABASE "gcash_db" ;
+2025-04-29 09:24:18.760 UTC [48] LOG:  received fast shutdown request
+2025-04-29 09:24:18.762 UTC [48] LOG:  aborting any active transactions
+2025-04-29 09:24:18.763 UTC [48] LOG:  background worker "logical replication launcher" (PID 55) exited with exit code 1
+2025-04-29 09:24:18.763 UTC [50] LOG:  shutting down
+2025-04-29 09:24:18.765 UTC [50] LOG:  checkpoint starting: shutdown immediate
+2025-04-29 09:24:18.816 UTC [50] LOG:  checkpoint complete: wrote 922 buffers (5.6%); 0 WAL file(s) added, 0 removed, 0 recycled; write=0.012 s, sync=0.034 s, total=0.054 s; sync files=301, longest=0.004 s, average=0.001 s; distance=4255 kB, estimate=4255 kB; lsn=0/1912100, redo lsn=0/1912100
+2025-04-29 09:24:18.820 UTC [48] LOG:  database system is shut down
+2025-04-29 09:24:18.883 UTC [1] LOG:  starting PostgreSQL 16.8 (Debian 16.8-1.pgdg120+1) on x86_64-pc-linux-gnu, compiled by gcc (Debian 12.2.0-14) 12.2.0, 64-bit
+2025-04-29 09:24:18.884 UTC [1] LOG:  listening on IPv4 address "0.0.0.0", port 5432
+2025-04-29 09:24:18.884 UTC [1] LOG:  listening on IPv6 address "::", port 5432
+2025-04-29 09:24:18.887 UTC [1] LOG:  listening on Unix socket "/var/run/postgresql/.s.PGSQL.5432"
+2025-04-29 09:24:18.892 UTC [66] LOG:  database system was shut down at 2025-04-29 09:24:18 UTC
+2025-04-29 09:24:18.896 UTC [1] LOG:  database system is ready to accept connections
+2025-04-29 09:24:22.887 UTC [77] FATAL:  database "kfa" does not exist
+2025-04-29 09:24:23.958 UTC [79] LOG:  statement: 
+	      DO $$ 
+	      BEGIN
+	        IF EXISTS (SELECT 1 FROM pg_type WHERE typname = 'transaction_type') THEN
+	          DROP TYPE transaction_type CASCADE;
+	        END IF;
+	        CREATE TYPE transaction_type AS ENUM ('Cash In', 'Cash Out', 'Load');
+	      END $$;
+	    
+2025-04-29 09:24:23.962 UTC [79] LOG:  statement: 
+	      CREATE TABLE IF NOT EXISTS Transactions (
+	        id SERIAL PRIMARY KEY,
+	        date TEXT NOT NULL,
+	        time TEXT NOT NULL,
+	        type transaction_type NOT NULL,
+	        amount TEXT NOT NULL,
+	        name TEXT NOT NULL,
+	        ref TEXT NOT NULL,
+	        fee TEXT NOT NULL,
+	        remarks TEXT NOT NULL,
+	        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+	        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+	      );
+	    
+2025-04-29 09:24:23.970 UTC [79] LOG:  statement: 
+	      DO $$ 
+	      BEGIN
+	        IF NOT EXISTS (SELECT 1 FROM information_schema.columns 
+	                       WHERE table_name = 'transactions' AND column_name = 'created_at') THEN
+	          ALTER TABLE Transactions ADD COLUMN created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP;
+	        END IF;
+	        IF NOT EXISTS (SELECT 1 FROM information_schema.columns 
+	                       WHERE table_name = 'transactions' AND column_name = 'updated_at') THEN
+	          ALTER TABLE Transactions ADD COLUMN updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP;
+	        END IF;
+	      END $$;
+	    
+2025-04-29 09:24:23.978 UTC [79] LOG:  statement: 
+	      CREATE TABLE IF NOT EXISTS CurrentBalance (
+	        id SERIAL PRIMARY KEY,
+	        balance DECIMAL NOT NULL DEFAULT 0.00
+	      );
+	    
+2025-04-29 09:24:23.984 UTC [79] LOG:  statement: SELECT * FROM CurrentBalance
+2025-04-29 09:24:23.984 UTC [79] LOG:  statement: INSERT INTO CurrentBalance (balance) VALUES (0.00)
+2025-04-29 09:24:27.961 UTC [87] FATAL:  database "kfa" does not exist
+2025-04-29 09:24:33.026 UTC [94] FATAL:  database "kfa" does not exist
+2025-04-29 09:24:35.572 UTC [103] FATAL:  database "kfa" does not exist
+2025-04-29 09:24:39.840 UTC [104] LOG:  statement: create database root;
+2025-04-29 09:24:40.639 UTC [112] FATAL:  database "kfa" does not exist
+2025-04-29 09:24:45.699 UTC [120] FATAL:  database "kfa" does not exist
+2025-04-29 09:24:50.763 UTC [129] FATAL:  database "kfa" does not exist
+2025-04-29 09:24:55.828 UTC [137] FATAL:  database "kfa" does not exist
+2025-04-29 09:25:00.899 UTC [145] FATAL:  database "kfa" does not exist
+2025-04-29 09:25:05.967 UTC [153] FATAL:  database "kfa" does not exist
+2025-04-29 09:25:08.553 UTC [161] FATAL:  database "kfa" does not exist
+2025-04-29 09:25:10.051 UTC [163] LOG:  statement: SELECT balance FROM CurrentBalance WHERE id = 1
+2025-04-29 09:25:10.052 UTC [165] LOG:  statement: SELECT * FROM Transactions ORDER BY id DESC
+2025-04-29 09:25:10.052 UTC [164] LOG:  execute <unnamed>: SELECT * FROM Transactions WHERE date = $1 ORDER BY id DESC
+2025-04-29 09:25:10.052 UTC [164] DETAIL:  parameters: $1 = '2025-04-28'
+2025-04-29 09:25:10.091 UTC [164] LOG:  statement: SELECT * FROM Transactions ORDER BY id DESC
+2025-04-29 09:25:13.691 UTC [173] FATAL:  database "kfa" does not exist
+2025-04-29 09:25:14.168 UTC [164] LOG:  execute <unnamed>: UPDATE CurrentBalance SET balance = $1 WHERE id = 1
+2025-04-29 09:25:14.168 UTC [164] DETAIL:  parameters: $1 = '5000'
+2025-04-29 09:25:15.013 UTC [164] LOG:  statement: SELECT balance FROM CurrentBalance WHERE id = 1
+2025-04-29 09:25:18.758 UTC [181] FATAL:  database "kfa" does not exist
+2025-04-29 09:25:23.107 UTC [164] LOG:  execute <unnamed>: INSERT INTO Transactions (date, time, type, amount, name, ref, fee, remarks, created_at, updated_at)
+	       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
+	       RETURNING id
+2025-04-29 09:25:23.107 UTC [164] DETAIL:  parameters: $1 = '2025-04-28', $2 = '10:00', $3 = 'Cash In', $4 = '500', $5 = 'kfa', $6 = '12345', $7 = '10', $8 = 'sent'
+2025-04-29 09:25:23.113 UTC [164] LOG:  execute <unnamed>: UPDATE CurrentBalance SET balance = balance + $1 WHERE id = 1
+2025-04-29 09:25:23.113 UTC [164] DETAIL:  parameters: $1 = '-500'
+2025-04-29 09:25:23.641 UTC [164] LOG:  execute <unnamed>: SELECT * FROM Transactions WHERE date = $1 ORDER BY id DESC
+2025-04-29 09:25:23.641 UTC [164] DETAIL:  parameters: $1 = '2025-04-28'
+2025-04-29 09:25:23.644 UTC [164] LOG:  statement: SELECT balance FROM CurrentBalance WHERE id = 1
+2025-04-29 09:25:23.651 UTC [164] LOG:  statement: SELECT * FROM Transactions ORDER BY id DESC
+2025-04-29 09:25:23.824 UTC [189] FATAL:  database "kfa" does not exist
+2025-04-29 09:25:28.897 UTC [197] FATAL:  database "kfa" does not exist
+2025-04-29 09:25:33.967 UTC [206] FATAL:  database "kfa" does not exist
+2025-04-29 09:25:36.601 UTC [214] FATAL:  database "kfa" does not exist
+2025-04-29 09:25:37.384 UTC [215] LOG:  execute <unnamed>: INSERT INTO Transactions (date, time, type, amount, name, ref, fee, remarks, created_at, updated_at)
+	       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
+	       RETURNING id
+2025-04-29 09:25:37.384 UTC [215] DETAIL:  parameters: $1 = '2025-04-28', $2 = '00:00', $3 = 'Load', $4 = '500', $5 = 'kfa', $6 = '12345', $7 = '10', $8 = 'load'
+2025-04-29 09:25:37.387 UTC [215] LOG:  execute <unnamed>: UPDATE CurrentBalance SET balance = balance + $1 WHERE id = 1
+2025-04-29 09:25:37.387 UTC [215] DETAIL:  parameters: $1 = '-500'
+2025-04-29 09:25:37.753 UTC [215] LOG:  execute <unnamed>: SELECT * FROM Transactions WHERE date = $1 ORDER BY id DESC
+2025-04-29 09:25:37.753 UTC [215] DETAIL:  parameters: $1 = '2025-04-28'
+2025-04-29 09:25:37.755 UTC [215] LOG:  statement: SELECT balance FROM CurrentBalance WHERE id = 1
+2025-04-29 09:25:37.765 UTC [215] LOG:  statement: SELECT * FROM Transactions ORDER BY id DESC
+2025-04-29 09:25:41.672 UTC [223] FATAL:  database "kfa" does not exist
+2025-04-29 09:25:46.746 UTC [231] FATAL:  database "kfa" does not exist
+2025-04-29 09:25:51.808 UTC [240] FATAL:  database "kfa" does not exist
+2025-04-29 09:25:53.844 UTC [242] FATAL:  password authentication failed for user "kfa"
+2025-04-29 09:25:53.844 UTC [242] DETAIL:  Connection matched file "/var/lib/postgresql/data/pg_hba.conf" line 128: "host all all all scram-sha-256"
+2025-04-29 09:25:56.434 UTC [244] LOG:  statement: SELECT
+	  d.datname as "Name",
+	  pg_catalog.pg_get_userbyid(d.datdba) as "Owner",
+	  pg_catalog.pg_encoding_to_char(d.encoding) as "Encoding",
+	  CASE d.datlocprovider WHEN 'c' THEN 'libc' WHEN 'i' THEN 'icu' END AS "Locale Provider",
+	  d.datcollate as "Collate",
+	  d.datctype as "Ctype",
+	  d.daticulocale as "ICU Locale",
+	  d.daticurules as "ICU Rules",
+	  pg_catalog.array_to_string(d.datacl, E'\n') AS "Access privileges"
+	FROM pg_catalog.pg_database d
+	ORDER BY 1;
+2025-04-29 09:25:56.870 UTC [252] FATAL:  database "kfa" does not exist
+2025-04-29 09:26:01.756 UTC [244] LOG:  statement: create database kfa;
+2025-04-29 09:26:22.717 UTC [295] LOG:  execute <unnamed>: INSERT INTO Transactions (date, time, type, amount, name, ref, fee, remarks, created_at, updated_at)
+	       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
+	       RETURNING id
+2025-04-29 09:26:22.717 UTC [295] DETAIL:  parameters: $1 = '2025-04-28', $2 = '17:26', $3 = 'Cash Out', $4 = '580', $5 = 'kkevin', $6 = '12345', $7 = '10', $8 = 'claimed'
+2025-04-29 09:26:22.720 UTC [295] LOG:  execute <unnamed>: UPDATE CurrentBalance SET balance = balance + $1 WHERE id = 1
+2025-04-29 09:26:22.720 UTC [295] DETAIL:  parameters: $1 = '580'
+2025-04-29 09:26:23.131 UTC [295] LOG:  execute <unnamed>: SELECT * FROM Transactions WHERE date = $1 ORDER BY id DESC
+2025-04-29 09:26:23.131 UTC [295] DETAIL:  parameters: $1 = '2025-04-28'
+2025-04-29 09:26:23.133 UTC [295] LOG:  statement: SELECT balance FROM CurrentBalance WHERE id = 1
+2025-04-29 09:26:23.141 UTC [295] LOG:  statement: SELECT * FROM Transactions ORDER BY id DESC
+2025-04-29 09:27:36.144 UTC [429] LOG:  execute <unnamed>: INSERT INTO Transactions (date, time, type, amount, name, ref, fee, remarks, created_at, updated_at)
+	       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
+	       RETURNING id
+2025-04-29 09:27:36.144 UTC [429] DETAIL:  parameters: $1 = '2025-04-28', $2 = '19:27', $3 = 'Cash Out', $4 = '10550', $5 = 'KEV', $6 = '55621', $7 = '20', $8 = 'CLAIMED'
+2025-04-29 09:27:36.152 UTC [429] LOG:  execute <unnamed>: UPDATE CurrentBalance SET balance = balance + $1 WHERE id = 1
+2025-04-29 09:27:36.152 UTC [429] DETAIL:  parameters: $1 = '10550'
+2025-04-29 09:27:36.548 UTC [429] LOG:  execute <unnamed>: SELECT * FROM Transactions WHERE date = $1 ORDER BY id DESC
+2025-04-29 09:27:36.548 UTC [429] DETAIL:  parameters: $1 = '2025-04-28'
+2025-04-29 09:27:36.550 UTC [429] LOG:  statement: SELECT balance FROM CurrentBalance WHERE id = 1
+2025-04-29 09:27:36.559 UTC [429] LOG:  statement: SELECT * FROM Transactions ORDER BY id DESC
+2025-04-29 09:28:02.660 UTC [472] LOG:  execute <unnamed>: SELECT * FROM Transactions WHERE date = $1 ORDER BY id ASC
+2025-04-29 09:28:02.660 UTC [472] DETAIL:  parameters: $1 = '2025-04-28'
+2025-04-29 09:28:07.687 UTC [472] LOG:  execute <unnamed>: SELECT * FROM Transactions WHERE date = $1 ORDER BY id ASC
+2025-04-29 09:28:07.687 UTC [472] DETAIL:  parameters: $1 = '2025-04-28'
+2025-04-29 09:28:14.251 UTC [472] LOG:  execute <unnamed>: SELECT * FROM Transactions WHERE date = $1 ORDER BY time
+2025-04-29 09:28:14.251 UTC [472] DETAIL:  parameters: $1 = '2025-04-28'

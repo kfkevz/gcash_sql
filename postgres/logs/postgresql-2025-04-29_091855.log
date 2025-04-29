@@ -1,0 +1,90 @@
+2025-04-29 09:18:55.897 UTC [1] LOG:  starting PostgreSQL 16.8 (Debian 16.8-1.pgdg120+1) on x86_64-pc-linux-gnu, compiled by gcc (Debian 12.2.0-14) 12.2.0, 64-bit
+2025-04-29 09:18:55.898 UTC [1] LOG:  listening on IPv4 address "0.0.0.0", port 5432
+2025-04-29 09:18:55.898 UTC [1] LOG:  listening on IPv6 address "::", port 5432
+2025-04-29 09:18:55.901 UTC [1] LOG:  listening on Unix socket "/var/run/postgresql/.s.PGSQL.5432"
+2025-04-29 09:18:55.905 UTC [30] LOG:  database system was shut down at 2025-04-29 09:18:52 UTC
+2025-04-29 09:18:55.910 UTC [1] LOG:  database system is ready to accept connections
+2025-04-29 09:18:58.401 UTC [41] FATAL:  database "kfa" does not exist
+2025-04-29 09:18:59.452 UTC [43] LOG:  statement: 
+	      DO $$ 
+	      BEGIN
+	        IF EXISTS (SELECT 1 FROM pg_type WHERE typname = 'transaction_type') THEN
+	          DROP TYPE transaction_type CASCADE;
+	        END IF;
+	        CREATE TYPE transaction_type AS ENUM ('Cash In', 'Cash Out', 'Load');
+	      END $$;
+	    
+2025-04-29 09:18:59.475 UTC [43] LOG:  statement: 
+	      CREATE TABLE IF NOT EXISTS Transactions (
+	        id SERIAL PRIMARY KEY,
+	        date TEXT NOT NULL,
+	        time TEXT NOT NULL,
+	        type transaction_type NOT NULL,
+	        amount TEXT NOT NULL,
+	        name TEXT NOT NULL,
+	        ref TEXT NOT NULL,
+	        fee TEXT NOT NULL,
+	        remarks TEXT NOT NULL,
+	        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+	        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+	      );
+	    
+2025-04-29 09:18:59.476 UTC [43] LOG:  statement: 
+	      DO $$ 
+	      BEGIN
+	        IF NOT EXISTS (SELECT 1 FROM information_schema.columns 
+	                       WHERE table_name = 'transactions' AND column_name = 'created_at') THEN
+	          ALTER TABLE Transactions ADD COLUMN created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP;
+	        END IF;
+	        IF NOT EXISTS (SELECT 1 FROM information_schema.columns 
+	                       WHERE table_name = 'transactions' AND column_name = 'updated_at') THEN
+	          ALTER TABLE Transactions ADD COLUMN updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP;
+	        END IF;
+	      END $$;
+	    
+2025-04-29 09:18:59.494 UTC [43] LOG:  statement: 
+	      CREATE TABLE IF NOT EXISTS CurrentBalance (
+	        id SERIAL PRIMARY KEY,
+	        balance DECIMAL NOT NULL DEFAULT 0.00
+	      );
+	    
+2025-04-29 09:18:59.495 UTC [43] LOG:  statement: SELECT * FROM CurrentBalance
+2025-04-29 09:19:03.479 UTC [51] FATAL:  database "kfa" does not exist
+2025-04-29 09:19:08.547 UTC [59] FATAL:  database "kfa" does not exist
+2025-04-29 09:19:13.688 UTC [67] FATAL:  database "kfa" does not exist
+2025-04-29 09:19:18.755 UTC [76] FATAL:  database "kfa" does not exist
+2025-04-29 09:19:23.826 UTC [84] FATAL:  database "kfa" does not exist
+2025-04-29 09:19:28.891 UTC [92] FATAL:  database "kfa" does not exist
+2025-04-29 09:19:33.954 UTC [100] FATAL:  database "kfa" does not exist
+2025-04-29 09:19:39.016 UTC [110] FATAL:  database "kfa" does not exist
+2025-04-29 09:19:44.085 UTC [111] LOG:  statement: create database kfa;
+2025-04-29 09:19:44.087 UTC [119] FATAL:  database "kfa" does not exist
+2025-04-29 09:19:58.975 UTC [139] LOG:  statement: SELECT * FROM Transactions ORDER BY id ASC
+2025-04-29 09:19:58.975 UTC [137] LOG:  statement: SELECT balance FROM CurrentBalance WHERE id = 1
+2025-04-29 09:19:58.981 UTC [138] LOG:  execute <unnamed>: SELECT * FROM Transactions WHERE date = $1 ORDER BY id ASC
+2025-04-29 09:19:58.981 UTC [138] DETAIL:  parameters: $1 = '2025-04-28'
+2025-04-29 09:19:59.025 UTC [137] LOG:  statement: SELECT * FROM Transactions ORDER BY id ASC
+2025-04-29 09:20:05.276 UTC [164] LOG:  execute <unnamed>: UPDATE CurrentBalance SET balance = $1 WHERE id = 1
+2025-04-29 09:20:05.276 UTC [164] DETAIL:  parameters: $1 = '5000'
+2025-04-29 09:20:16.230 UTC [182] LOG:  statement: SELECT balance FROM CurrentBalance WHERE id = 1
+2025-04-29 09:20:35.178 UTC [208] ERROR:  column "type" of relation "transactions" does not exist at character 39
+2025-04-29 09:20:35.178 UTC [208] STATEMENT:  INSERT INTO Transactions (date, time, type, amount, name, ref, fee, remarks, created_at, updated_at)
+	       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
+	       RETURNING id
+2025-04-29 09:20:45.526 UTC [225] ERROR:  column "type" of relation "transactions" does not exist at character 39
+2025-04-29 09:20:45.526 UTC [225] STATEMENT:  INSERT INTO Transactions (date, time, type, amount, name, ref, fee, remarks, created_at, updated_at)
+	       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
+	       RETURNING id
+2025-04-29 09:21:02.007 UTC [258] FATAL:  could not open file "global/pg_filenode.map": No such file or directory
+2025-04-29 09:21:04.640 UTC [266] FATAL:  could not open file "global/pg_filenode.map": No such file or directory
+2025-04-29 09:21:09.693 UTC [274] FATAL:  could not open file "global/pg_filenode.map": No such file or directory
+2025-04-29 09:21:10.668 UTC [1] LOG:  received fast shutdown request
+2025-04-29 09:21:10.668 UTC [1] LOG:  could not open file "postmaster.pid": No such file or directory
+2025-04-29 09:21:10.668 UTC [1] LOG:  aborting any active transactions
+2025-04-29 09:21:10.670 UTC [1] LOG:  background worker "logical replication launcher" (PID 33) exited with exit code 1
+2025-04-29 09:21:10.670 UTC [28] LOG:  shutting down
+2025-04-29 09:21:10.670 UTC [28] PANIC:  could not open file "/var/lib/postgresql/data/global/pg_control": No such file or directory
+2025-04-29 09:21:13.791 UTC [1] LOG:  checkpointer process (PID 28) was terminated by signal 6: Aborted
+2025-04-29 09:21:13.791 UTC [1] LOG:  terminating any other active server processes
+2025-04-29 09:21:13.791 UTC [1] LOG:  abnormal database system shutdown
+2025-04-29 09:21:13.798 UTC [1] LOG:  database system is shut down

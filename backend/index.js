@@ -219,7 +219,7 @@ app.get('/api/transactions', async (req, res) => {
     }
 
     // Always sort by id in ascending order
-    query += ' ORDER BY id ASC';
+    query += ' ORDER BY id DESC';
 
     const result = await pool.query(query, queryParams);
     const transactions = result.rows || [];
