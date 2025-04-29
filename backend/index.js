@@ -58,7 +58,6 @@ async function initializeDatabase() {
       );
     `);
 
-    // Add created_at and updated_at columns if they don't exist
     await pool.query(`
       DO $$ 
       BEGIN
@@ -176,21 +175,19 @@ app.post('/api/transactions', async (req, res) => {
 });
 
 app.get('/api/transactions', async (req, res) => {
-  const { date, search, searchField } = req.query;
+  const { date, search, searchField, sortBy, order, limit } = req.query;
   try {
     let query = 'SELECT * FROM Transactions';
     const queryParams = [];
     let paramIndex = 1;
     let conditions = [];
 
-    // Add date filter if provided
     if (date) {
       conditions.push(`date = $${paramIndex}`);
       queryParams.push(date);
       paramIndex++;
     }
 
-    // Add search filter if provided, searching only in the specified field
     if (search && searchField) {
       const allowedFields = ['id', 'date', 'time', 'type', 'amount', 'name', 'ref', 'fee', 'remarks'];
       if (!allowedFields.includes(searchField)) {
@@ -200,7 +197,6 @@ app.get('/api/transactions', async (req, res) => {
       const searchTerm = `%${search}%`;
       let condition;
 
-      // Special handling for fields that need casting
       if (searchField === 'id') {
         condition = `CAST(id AS TEXT) ILIKE $${paramIndex}`;
       } else if (searchField === 'type') {
@@ -213,13 +209,28 @@ app.get('/api/transactions', async (req, res) => {
       queryParams.push(searchTerm);
     }
 
-    // Combine conditions into the WHERE clause
     if (conditions.length > 0) {
       query += ' WHERE ' + conditions.join(' AND ');
     }
 
-    // Always sort by id in ascending order
-    query += ' ORDER BY id DESC';
+    if (sortBy) {
+      const allowedSortFields = ['id', 'time', 'type', 'amount', 'name', 'ref', 'fee', 'remarks'];
+      if (!allowedSortFields.includes(sortBy)) {
+        return res.status(400).json({ error: `Invalid sortBy field. Must be one of: ${allowedSortFields.join(', ')}` });
+      }
+      query += ` ORDER BY ${sortBy}`;
+      if (order && order.toLowerCase() === 'desc') {
+        query += ' DESC';
+      } else {
+        query += ' ASC';
+      }
+    } else {
+      query += ' ORDER BY id DESC';
+    }
+
+    if (limit) {
+      query += ` LIMIT ${parseInt(limit)}`;
+    }
 
     const result = await pool.query(query, queryParams);
     const transactions = result.rows || [];
@@ -286,14 +297,14 @@ app.put('/api/transactions/:id', async (req, res) => {
 
 function getRemarksColor(remark) {
   const remarkUpper = remark.toUpperCase();
-  if (remarkUpper.includes('MAYA')) return '#006400'; // Dark green
-  if (remarkUpper.includes('BILLS PAYMENT')) return '#008000'; // Green
-  if (remarkUpper.includes('CLAIMED') || remarkUpper.includes('CLAIM')) return '#90EE90'; // Light green
-  if (remarkUpper.includes('CUANA')) return '#FFFF00'; // Yellow
-  if (remarkUpper.includes('LOAD')) return '#FFDAB9'; // Light orange
-  if (remarkUpper.includes('SENT')) return '#ADD8E6'; // Blue
-  if (remarkUpper.includes('UNPAID') || remarkUpper.includes('UNCLAIMED')) return '#FFCCCB'; // Light red
-  return '#FFFFFF'; // Default white
+  if (remarkUpper.includes('MAYA')) return '#006400';
+  if (remarkUpper.includes('BILLS PAYMENT')) return '#008000';
+  if (remarkUpper.includes('CLAIMED') || remarkUpper.includes('CLAIM')) return '#90EE90';
+  if (remarkUpper.includes('CUANA')) return '#FFFF00';
+  if (remarkUpper.includes('LOAD')) return '#FFDAB9';
+  if (remarkUpper.includes('SENT')) return '#ADD8E6';
+  if (remarkUpper.includes('UNPAID') || remarkUpper.includes('UNCLAIMED')) return '#FFCCCB';
+  return '#FFFFFF';
 }
 
 app.get('/api/transactions/download', async (req, res) => {
@@ -332,21 +343,17 @@ app.get('/api/transactions/download', async (req, res) => {
 
     doc.pipe(res);
 
-    // Title
     doc.fontSize(16).text('GCash Transactions Summary', { align: 'center' });
     doc.moveDown(0.5);
 
-    // Summary Section (Left and Right Columns)
     const startY = doc.y;
-    const lineSpacing = 10; // Reduced line spacing for compression
+    const lineSpacing = 10;
     doc.fontSize(10);
 
-    // Left Column: Date, Total Transactions, Total Fee
     doc.text(`Date: ${date}`, 30, startY);
     doc.text(`Total Transactions: ${totalTransactions}`, 30, startY + lineSpacing);
     doc.text(`Total Fee (PHP): ${totalFee.toFixed(2)}`, 30, startY + 2 * lineSpacing);
 
-    // Right Column: Breakdown by Type
     const rightColumnX = 300;
     doc.text('Breakdown by Type:', rightColumnX, startY);
     let typeY = startY + lineSpacing;
@@ -357,13 +364,11 @@ app.get('/api/transactions/download', async (req, res) => {
 
     doc.moveDown(1);
 
-    // Detailed Transactions
     doc.fontSize(12).text('Detailed Transactions', { align: 'center' });
     doc.moveDown(0.5);
 
-    // Table Headers
     const tableTop = doc.y;
-    const colWidths = [30, 70, 50, 50, 50, 60, 60, 40, 70]; // Adjusted column widths
+    const colWidths = [30, 70, 50, 50, 50, 60, 60, 40, 70];
     const headers = ['ID', 'Date', 'Time', 'Type', 'Amount', 'Name', 'Ref', 'Fee', 'Remarks'];
     let xPos = 30;
 
@@ -374,7 +379,6 @@ app.get('/api/transactions/download', async (req, res) => {
       xPos += colWidths[i];
     });
 
-    // Table Rows
     doc.font('Helvetica').fillColor('black');
     let yPos = tableTop + 20;
     transactions.forEach((txn, index) => {
@@ -405,18 +409,16 @@ app.get('/api/transactions/download', async (req, res) => {
         txn.remarks,
       ];
 
-      // Set background color for Remarks
       const remarksColor = getRemarksColor(txn.remarks);
 
       row.forEach((cell, i) => {
-        if (i === 8) { // Remarks column
+        if (i === 8) {
           doc.rect(xPos, yPos, colWidths[i], 15).fillAndStroke(remarksColor, '#000000');
           
-          // Dynamically adjust font size for Remarks to fit within the column
           let fontSize = 8;
-          doc.font('Helvetica-Bold').fontSize(fontSize); // Set to bold for Remarks
+          doc.font('Helvetica-Bold').fontSize(fontSize);
           let textWidth = doc.widthOfString(cell);
-          const maxWidth = colWidths[i] - 4; // Account for padding
+          const maxWidth = colWidths[i] - 4;
           while (textWidth > maxWidth && fontSize > 4) {
             fontSize -= 0.5;
             doc.fontSize(fontSize);
@@ -438,6 +440,63 @@ app.get('/api/transactions/download', async (req, res) => {
   } catch (error) {
     console.error(error);
     res.status(500).json({ error: 'Failed to generate transaction summary PDF' });
+  }
+});
+
+// New endpoint for monthly transaction reports
+app.get('/api/reports/monthly-transactions', async (req, res) => {
+  try {
+    const result = await pool.query(`
+      SELECT 
+        TO_CHAR(TO_DATE(date, 'YYYY-MM-DD'), 'YYYY-MM') AS month,
+        COUNT(*) AS total_transactions,
+        SUM(CAST(amount AS DECIMAL)) AS total_amount,
+        SUM(CAST(fee AS DECIMAL)) AS total_fee
+      FROM Transactions
+      GROUP BY TO_CHAR(TO_DATE(date, 'YYYY-MM-DD'), 'YYYY-MM')
+      ORDER BY month DESC
+    `);
+
+    const monthlyTransactions = result.rows.map(row => ({
+      month: row.month,
+      totalTransactions: parseInt(row.total_transactions),
+      totalAmount: parseFloat(row.total_amount),
+      totalFee: parseFloat(row.total_fee),
+    }));
+
+    res.status(200).json({ monthlyTransactions });
+  } catch (error) {
+    console.error('Error fetching monthly transactions:', error);
+    res.status(500).json({ error: 'Failed to fetch monthly transactions' });
+  }
+});
+
+// New endpoint for fee comparison between this month and last month
+app.get('/api/reports/fee-comparison', async (req, res) => {
+  try {
+    // Hardcoding current month as April 2025 and last month as March 2025 based on current date
+    const thisMonth = '2025-04';
+    const lastMonth = '2025-03';
+
+    const thisMonthResult = await pool.query(`
+      SELECT SUM(CAST(fee AS DECIMAL)) AS total_fee
+      FROM Transactions
+      WHERE TO_CHAR(TO_DATE(date, 'YYYY-MM-DD'), 'YYYY-MM') = $1
+    `, [thisMonth]);
+
+    const lastMonthResult = await pool.query(`
+      SELECT SUM(CAST(fee AS DECIMAL)) AS total_fee
+      FROM Transactions
+      WHERE TO_CHAR(TO_DATE(date, 'YYYY-MM-DD'), 'YYYY-MM') = $1
+    `, [lastMonth]);
+
+    const thisMonthFee = thisMonthResult.rows[0].total_fee ? parseFloat(thisMonthResult.rows[0].total_fee) : 0;
+    const lastMonthFee = lastMonthResult.rows[0].total_fee ? parseFloat(lastMonthResult.rows[0].total_fee) : 0;
+
+    res.status(200).json({ thisMonthFee, lastMonthFee });
+  } catch (error) {
+    console.error('Error fetching fee comparison:', error);
+    res.status(500).json({ error: 'Failed to fetch fee comparison' });
   }
 });
 
