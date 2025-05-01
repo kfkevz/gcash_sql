@@ -1,4 +1,3 @@
-
 services:
   frontend:
     container_name: 'frontend'
@@ -12,6 +11,7 @@ services:
       - backend
     networks:
       - gcash_sql_network
+
   backend:
     container_name: 'backend'
     image: 'dockerfile/npm-gcash-sql:v3'
@@ -22,6 +22,8 @@ services:
         condition: service_healthy
     environment:
       - DATABASE_URL=postgres://kfa:root@postgres:5432/gcash_db
+    volumes:
+      - /opt/docker_apps/gcash_sql/backups:/app/backups  # New volume for backups
     networks:
       - gcash_sql_network
 
@@ -40,10 +42,11 @@ services:
       - /opt/docker_apps/gcash_sql/postgres/logs:/var/log/postgresql
     command: postgres -c config_file=/etc/postgresql/postgresql.conf
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U kfa"]
-      interval: 5s
+      test: ["CMD-SHELL", "pg_isready -U kfa -d gcash_db"]
+      interval: 10s
       timeout: 5s
       retries: 5
+      start_period: 30s
     networks:
       - gcash_sql_network
 

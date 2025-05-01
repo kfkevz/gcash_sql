@@ -1,0 +1,105 @@
+2025-04-29 15:09:30.554 UTC [1] LOG:  starting PostgreSQL 16.8 (Debian 16.8-1.pgdg120+1) on x86_64-pc-linux-gnu, compiled by gcc (Debian 12.2.0-14) 12.2.0, 64-bit
+2025-04-29 15:09:30.555 UTC [1] LOG:  listening on IPv4 address "0.0.0.0", port 5432
+2025-04-29 15:09:30.556 UTC [1] LOG:  listening on IPv6 address "::", port 5432
+2025-04-29 15:09:30.564 UTC [1] LOG:  listening on Unix socket "/var/run/postgresql/.s.PGSQL.5432"
+2025-04-29 15:09:30.573 UTC [66] LOG:  database system was shut down at 2025-04-29 15:09:30 UTC
+2025-04-29 15:09:30.579 UTC [1] LOG:  database system is ready to accept connections
+2025-04-29 15:09:34.694 UTC [79] LOG:  statement: 
+	      DO $$ 
+	      BEGIN
+	        IF EXISTS (SELECT 1 FROM pg_type WHERE typname = 'transaction_type') THEN
+	          DROP TYPE transaction_type CASCADE;
+	        END IF;
+	        CREATE TYPE transaction_type AS ENUM ('Cash In', 'Cash Out', 'Load');
+	      END $$;
+	    
+2025-04-29 15:09:34.700 UTC [79] LOG:  statement: 
+	      CREATE TABLE IF NOT EXISTS Transactions (
+	        id SERIAL PRIMARY KEY,
+	        date TEXT NOT NULL,
+	        time TEXT NOT NULL,
+	        type transaction_type NOT NULL,
+	        amount TEXT NOT NULL,
+	        name TEXT NOT NULL,
+	        ref TEXT NOT NULL,
+	        fee TEXT NOT NULL,
+	        remarks TEXT NOT NULL,
+	        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+	        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+	      );
+	    
+2025-04-29 15:09:34.714 UTC [79] LOG:  statement: 
+	      DO $$ 
+	      BEGIN
+	        IF NOT EXISTS (SELECT 1 FROM information_schema.columns 
+	                       WHERE table_name = 'transactions' AND column_name = 'created_at') THEN
+	          ALTER TABLE Transactions ADD COLUMN created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP;
+	        END IF;
+	        IF NOT EXISTS (SELECT 1 FROM information_schema.columns 
+	                       WHERE table_name = 'transactions' AND column_name = 'updated_at') THEN
+	          ALTER TABLE Transactions ADD COLUMN updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP;
+	        END IF;
+	      END $$;
+	    
+2025-04-29 15:09:34.723 UTC [79] LOG:  statement: 
+	      CREATE TABLE IF NOT EXISTS CurrentBalance (
+	        id SERIAL PRIMARY KEY,
+	        balance DECIMAL NOT NULL DEFAULT 0.00
+	      );
+	    
+2025-04-29 15:09:34.737 UTC [79] LOG:  statement: SELECT * FROM CurrentBalance
+2025-04-29 15:09:34.738 UTC [79] LOG:  statement: INSERT INTO CurrentBalance (balance) VALUES (0.00)
+2025-04-29 15:09:54.044 UTC [96] LOG:  statement: SELECT balance FROM CurrentBalance WHERE id = 1
+2025-04-29 15:09:54.046 UTC [98] LOG:  statement: SELECT * FROM Transactions ORDER BY id DESC LIMIT 1
+2025-04-29 15:09:54.046 UTC [97] LOG:  execute <unnamed>: SELECT * FROM Transactions WHERE date = $1 ORDER BY id DESC
+2025-04-29 15:09:54.046 UTC [97] DETAIL:  parameters: $1 = '2025-04-29'
+2025-04-29 15:09:54.062 UTC [97] LOG:  statement: SELECT * FROM Transactions ORDER BY id DESC LIMIT 1
+2025-04-29 15:09:59.258 UTC [97] LOG:  statement: SELECT balance FROM CurrentBalance WHERE id = 1
+2025-04-29 15:09:59.261 UTC [97] LOG:  execute <unnamed>: SELECT * FROM Transactions WHERE date = $1 ORDER BY id DESC
+2025-04-29 15:09:59.261 UTC [97] DETAIL:  parameters: $1 = '2025-04-29'
+2025-04-29 15:09:59.273 UTC [97] LOG:  statement: SELECT * FROM Transactions ORDER BY id DESC LIMIT 1
+2025-04-29 15:10:03.907 UTC [97] LOG:  execute <unnamed>: UPDATE CurrentBalance SET balance = $1 WHERE id = 1
+2025-04-29 15:10:03.907 UTC [97] DETAIL:  parameters: $1 = '1000'
+2025-04-29 15:10:04.668 UTC [97] LOG:  statement: SELECT balance FROM CurrentBalance WHERE id = 1
+2025-04-29 15:10:17.011 UTC [116] LOG:  execute <unnamed>: INSERT INTO Transactions (date, time, type, amount, name, ref, fee, remarks, created_at, updated_at)
+	       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
+	       RETURNING id
+2025-04-29 15:10:17.011 UTC [116] DETAIL:  parameters: $1 = '2025-04-29', $2 = '11:10', $3 = 'Cash In', $4 = '500', $5 = 'KFA', $6 = '12345', $7 = '10', $8 = 'SENT'
+2025-04-29 15:10:17.024 UTC [116] LOG:  execute <unnamed>: UPDATE CurrentBalance SET balance = balance + $1 WHERE id = 1
+2025-04-29 15:10:17.024 UTC [116] DETAIL:  parameters: $1 = '-500'
+2025-04-29 15:10:17.372 UTC [116] LOG:  execute <unnamed>: SELECT * FROM Transactions WHERE date = $1 ORDER BY id DESC
+2025-04-29 15:10:17.372 UTC [116] DETAIL:  parameters: $1 = '2025-04-29'
+2025-04-29 15:10:17.379 UTC [117] LOG:  statement: SELECT balance FROM CurrentBalance WHERE id = 1
+2025-04-29 15:10:17.383 UTC [117] LOG:  statement: SELECT * FROM Transactions ORDER BY id DESC LIMIT 1
+2025-04-29 15:10:30.631 UTC [127] LOG:  execute <unnamed>: INSERT INTO Transactions (date, time, type, amount, name, ref, fee, remarks, created_at, updated_at)
+	       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
+	       RETURNING id
+2025-04-29 15:10:30.631 UTC [127] DETAIL:  parameters: $1 = '2025-04-29', $2 = '11:19', $3 = 'Cash Out', $4 = '250', $5 = 'KEVIN', $6 = '12331', $7 = '10', $8 = 'CLAIMED'
+2025-04-29 15:10:30.634 UTC [127] LOG:  execute <unnamed>: UPDATE CurrentBalance SET balance = balance + $1 WHERE id = 1
+2025-04-29 15:10:30.634 UTC [127] DETAIL:  parameters: $1 = '250'
+2025-04-29 15:10:31.243 UTC [127] LOG:  execute <unnamed>: SELECT * FROM Transactions WHERE date = $1 ORDER BY id DESC
+2025-04-29 15:10:31.243 UTC [127] DETAIL:  parameters: $1 = '2025-04-29'
+2025-04-29 15:10:31.246 UTC [127] LOG:  statement: SELECT balance FROM CurrentBalance WHERE id = 1
+2025-04-29 15:10:31.254 UTC [127] LOG:  statement: SELECT * FROM Transactions ORDER BY id DESC LIMIT 1
+2025-04-29 15:10:46.732 UTC [145] LOG:  execute <unnamed>: INSERT INTO Transactions (date, time, type, amount, name, ref, fee, remarks, created_at, updated_at)
+	       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
+	       RETURNING id
+2025-04-29 15:10:46.732 UTC [145] DETAIL:  parameters: $1 = '2025-04-29', $2 = '11:10', $3 = 'Load', $4 = '20', $5 = 'AN20', $6 = '51312', $7 = '5', $8 = 'LOAD'
+2025-04-29 15:10:46.742 UTC [145] LOG:  execute <unnamed>: UPDATE CurrentBalance SET balance = balance + $1 WHERE id = 1
+2025-04-29 15:10:46.742 UTC [145] DETAIL:  parameters: $1 = '-20'
+2025-04-29 15:10:47.144 UTC [145] LOG:  execute <unnamed>: SELECT * FROM Transactions WHERE date = $1 ORDER BY id DESC
+2025-04-29 15:10:47.144 UTC [145] DETAIL:  parameters: $1 = '2025-04-29'
+2025-04-29 15:10:47.148 UTC [145] LOG:  statement: SELECT balance FROM CurrentBalance WHERE id = 1
+2025-04-29 15:10:47.154 UTC [145] LOG:  statement: SELECT * FROM Transactions ORDER BY id DESC LIMIT 1
+2025-04-29 15:10:49.296 UTC [145] LOG:  execute <unnamed>: SELECT * FROM Transactions WHERE date = $1 ORDER BY id DESC
+2025-04-29 15:10:49.296 UTC [145] DETAIL:  parameters: $1 = '2025-04-29'
+2025-04-29 15:10:49.322 UTC [145] LOG:  statement: SELECT * FROM Transactions ORDER BY id DESC LIMIT 1
+2025-04-29 15:10:51.974 UTC [146] LOG:  statement: SELECT pg_catalog.set_config('search_path', '', false);
+2025-04-29 15:11:06.900 UTC [164] LOG:  statement: SELECT pg_catalog.set_config('search_path', '', false);
+2025-04-29 15:14:29.463 UTC [1] LOG:  received fast shutdown request
+2025-04-29 15:14:29.466 UTC [1] LOG:  aborting any active transactions
+2025-04-29 15:14:29.467 UTC [1] LOG:  background worker "logical replication launcher" (PID 69) exited with exit code 1
+2025-04-29 15:14:29.467 UTC [64] LOG:  shutting down
+2025-04-29 15:14:29.470 UTC [64] LOG:  checkpoint starting: shutdown immediate
+2025-04-29 15:14:29.495 UTC [64] LOG:  checkpoint complete: wrote 116 buffers (0.7%); 0 WAL file(s) added, 0 removed, 0 recycled; write=0.005 s, sync=0.013 s, total=0.028 s; sync files=62, longest=0.002 s, average=0.001 s; distance=479 kB, estimate=479 kB; lsn=0/1989F90, redo lsn=0/1989F90
+2025-04-29 15:14:29.500 UTC [1] LOG:  database system is shut down

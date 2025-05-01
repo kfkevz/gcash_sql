@@ -14,7 +14,6 @@
     .flex {
       display: flex;
     }
-    /* Sidebar */
     .sidebar {
       width: 200px;
       background-color: #1a2526;
@@ -53,7 +52,6 @@
       font-weight: bold;
       color: #007bff;
     }
-    /* Latest Transaction in Sidebar */
     .latest-transaction {
       background-color: #2a3b3d;
       border: 1px solid #4a5b5d;
@@ -82,7 +80,6 @@
       font-weight: normal;
       color: #ccc;
     }
-    /* Main Content */
     .main-content {
       flex: 1;
       padding: 20px;
@@ -93,7 +90,6 @@
     .content-section.active {
       display: block;
     }
-    /* Summary Cards */
     .summary-cards {
       display: flex;
       gap: 20px;
@@ -142,7 +138,6 @@
     .summary-card button:hover {
       background-color: #0056b3;
     }
-    /* Transaction Form and Fee Table */
     .form-and-fee {
       display: flex;
       gap: 20px;
@@ -219,7 +214,6 @@
       font-weight: normal;
       color: #666;
     }
-    /* Fetch and Search */
     .fetch-search {
       background-color: white;
       padding: 15px;
@@ -282,7 +276,6 @@
     .fetch-search .clear-btn:hover {
       background-color: #5a6268;
     }
-    /* Transaction Table */
     .transaction-table {
       background-color: white;
       padding: 15px;
@@ -329,7 +322,6 @@
       padding: 10px;
       font-size: 14px;
     }
-    /* Reports Section */
     .reports-section {
       background-color: white;
       padding: 15px;
@@ -374,7 +366,41 @@
       max-width: 300px;
       height: 200px;
     }
-    /* Remarks Colors */
+    .settings-section {
+      background-color: white;
+      padding: 15px;
+      border-radius: 5px;
+      margin-bottom: 20px;
+    }
+    .settings-section h2 {
+      font-size: 16px;
+      margin-bottom: 15px;
+    }
+    .backup-restore .flex {
+      gap: 10px;
+      align-items: center;
+    }
+    .backup-restore button {
+      padding: 5px 10px;
+      border: none;
+      border-radius: 3px;
+      font-size: 14px;
+      cursor: pointer;
+    }
+    .backup-restore .backup-btn {
+      background-color: #007bff;
+      color: white;
+    }
+    .backup-restore .backup-btn:hover {
+      background-color: #0056b3;
+    }
+    .backup-restore .restore-btn {
+      background-color: #28a745;
+      color: white;
+    }
+    .backup-restore .restore-btn:hover {
+      background-color: #218838;
+    }
     .remarks-sent { background-color: #ADD8E6; }
     .remarks-claimed { background-color: #90EE90; }
     .remarks-load { background-color: #FFDAB9; }
@@ -384,7 +410,6 @@
 </head>
 <body>
   <div class="flex">
-    <!-- Sidebar -->
     <div class="sidebar">
       <h1>GCash Inventory</h1>
       <ul>
@@ -393,7 +418,6 @@
         <li><a onclick="showSection('reports')">Reports</a></li>
         <li><a onclick="showSection('settings')">Settings</a></li>
       </ul>
-      <!-- Latest Transaction -->
       <div class="latest-transaction">
         <h2>Latest Transaction</h2>
         <table>
@@ -433,11 +457,8 @@
       </div>
     </div>
 
-    <!-- Main Content -->
     <div class="main-content">
-      <!-- Dashboard Section -->
       <div id="dashboard-section" class="content-section active">
-        <!-- Summary Cards -->
         <div class="summary-cards">
           <div class="summary-card">
             <h2>Total Transactions</h2>
@@ -461,9 +482,7 @@
           </div>
         </div>
 
-        <!-- Transaction Form and Fee Table -->
         <div class="form-and-fee">
-          <!-- Form -->
           <div class="transaction-form">
             <h2>Add Transaction</h2>
             <form id="transactionForm" onsubmit="event.preventDefault(); saveTransaction();">
@@ -510,7 +529,6 @@
             </form>
           </div>
 
-          <!-- Fee Table -->
           <div class="fee-table">
             <h2>Fee Table</h2>
             <table>
@@ -611,9 +629,7 @@
         </div>
       </div>
 
-      <!-- Transactions Section -->
       <div id="transactions-section" class="content-section">
-        <!-- Fetch and Search -->
         <div class="fetch-search">
           <h2>Fetch Transactions for Date:</h2>
           <div class="flex">
@@ -660,7 +676,6 @@
           </div>
         </div>
 
-        <!-- Transaction Table -->
         <div class="transaction-table">
           <table>
             <thead>
@@ -684,7 +699,6 @@
         </div>
       </div>
 
-      <!-- Reports Section -->
       <div id="reports-section" class="content-section">
         <div class="reports-section">
           <h2>Monthly Transaction Reports</h2>
@@ -714,37 +728,35 @@
         </div>
       </div>
 
-      <!-- Settings Section (Placeholder) -->
       <div id="settings-section" class="content-section">
-        <div class="reports-section">
-          <h2>Settings</h2>
-          <p>Settings section to be implemented.</p>
+        <div class="settings-section">
+          <h2>Backup & Restore</h2>
+          <div class="backup-restore">
+            <div class="flex">
+              <button onclick="backupDatabase()" class="backup-btn">Backup Database</button>
+              <input type="file" id="restoreFile" accept=".sql">
+              <button onclick="restoreDatabase()" class="restore-btn">Restore Database</button>
+            </div>
+          </div>
         </div>
       </div>
     </div>
   </div>
 
   <script>
-    // Set today's date (2025-04-29)
     const today = '2025-04-29';
 
-    // Function to set the date fields to today
     function setTodayDate() {
       document.getElementById('date').value = today;
       document.getElementById('fetchDate').value = today;
     }
 
-    // Function to show the selected section
     function showSection(section) {
-      // Hide all sections
       document.querySelectorAll('.content-section').forEach(s => s.classList.remove('active'));
-      // Show the selected section
       document.getElementById(`${section}-section`).classList.add('active');
-      // Update active link in sidebar
       document.querySelectorAll('.sidebar a').forEach(a => a.classList.remove('active'));
       document.querySelector(`.sidebar a[onclick="showSection('${section}')"]`).classList.add('active');
 
-      // Fetch data based on section
       if (section === 'dashboard') {
         fetchBalance();
         fetchTransactions();
@@ -756,7 +768,6 @@
       }
     }
 
-    // Fetch initial data on page load
     window.onload = () => {
       setTodayDate();
       fetchBalance();
@@ -849,7 +860,6 @@
         const transactions = data.transactions || [];
         const totalFee = data.totalFee || 0;
 
-        // Update summary cards
         document.getElementById('totalTransactions').textContent = transactions.length;
         document.getElementById('totalFees').textContent = `${totalFee.toFixed(2)} PHP`;
         document.getElementById('totalFeeDisplay').textContent = `Total Fee: ${totalFee.toFixed(2)} PHP`;
@@ -860,7 +870,6 @@
         });
         document.getElementById('totalCashIn').textContent = `${totalCashIn.toFixed(2)} PHP`;
 
-        // Update table
         const tableBody = document.getElementById('transactionTable');
         tableBody.innerHTML = '';
         transactions.forEach(txn => {
@@ -891,7 +900,6 @@
           tableBody.appendChild(row);
         });
 
-        // Fetch the latest transaction after updating the table
         fetchLatestTransaction();
       } catch (error) {
         console.error('Error fetching transactions:', error);
@@ -929,17 +937,14 @@
         const data = await response.json();
         const { thisMonthFee, lastMonthFee } = data;
 
-        // Update text
         document.getElementById('thisMonthFee').textContent = `This Month (April 2025): ${thisMonthFee.toFixed(2)} PHP`;
         document.getElementById('lastMonthFee').textContent = `Last Month (March 2025): ${lastMonthFee.toFixed(2)} PHP`;
         document.getElementById('feeDifference').textContent = `Difference: ${(thisMonthFee - lastMonthFee).toFixed(2)} PHP`;
 
-        // Destroy existing chart if it exists
         if (feeChart) {
           feeChart.destroy();
         }
 
-        // Create bar chart
         const ctx = document.getElementById('feeComparisonChart').getContext('2d');
         feeChart = new Chart(ctx, {
           type: 'bar',
@@ -1082,6 +1087,82 @@
       if (sortBy !== 'id') url.searchParams.append('sortBy', sortBy);
 
       window.location.href = url;
+    }
+
+    async function backupDatabase() {
+      try {
+        const response = await fetch('http://localhost:5000/api/backup');
+        if (!response.ok) {
+          const data = await response.json();
+          throw new Error(data.error || 'Failed to create backup');
+        }
+
+        // Get the file blob from the response
+        const blob = await response.blob();
+        const contentDisposition = response.headers.get('Content-Disposition');
+        let fileName = 'gcash_backup_default.sql'; // Fallback filename
+
+        // Extract filename from Content-Disposition header
+        if (contentDisposition) {
+          const fileNameMatch = contentDisposition.match(/filename="(.+)"/);
+          if (fileNameMatch && fileNameMatch[1]) {
+            fileName = fileNameMatch[1];
+          }
+        }
+
+        // Create a temporary URL for the blob and trigger download
+        const url = window.URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        link.href = url;
+        link.download = fileName;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        window.URL.revokeObjectURL(url);
+
+        alert('Backup created successfully');
+      } catch (error) {
+        console.error('Error creating backup:', error);
+        alert('Failed to create backup: ' + error.message);
+      }
+    }
+
+    async function restoreDatabase() {
+      const fileInput = document.getElementById('restoreFile');
+      const file = fileInput.files[0];
+      if (!file) {
+        alert('Please select a backup file to restore');
+        return;
+      }
+
+      if (!confirm('Are you sure you want to restore the database? This will overwrite all current data.')) {
+        return;
+      }
+
+      const formData = new FormData();
+      formData.append('backupFile', file);
+
+      try {
+        const response = await fetch('http://localhost:5000/api/restore', {
+          method: 'POST',
+          body: formData,
+        });
+        const data = await response.json();
+        if (data.message) {
+          alert('Database restored successfully');
+          fileInput.value = ''; // Clear the file input
+          fetchBalance();
+          fetchTransactions();
+          fetchLatestTransaction();
+          fetchMonthlyTransactions();
+          fetchFeeComparison();
+        } else {
+          throw new Error(data.error || 'Failed to restore database');
+        }
+      } catch (error) {
+        console.error('Error restoring database:', error);
+        alert('Failed to restore database: ' + error.message);
+      }
     }
   </script>
 </body>

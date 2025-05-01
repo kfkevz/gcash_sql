@@ -1,8 +1,17 @@
 const express = require('express');
 const { Pool } = require('pg');
 const PDFDocument = require('pdfkit');
+const multer = require('multer');
+const { exec } = require('child_process');
+const fs = require('fs');
+const path = require('path');
+const util = require('util');
+const execPromise = util.promisify(exec);
 const app = express();
 const port = 5000;
+
+// Configure multer for file uploads
+const upload = multer({ dest: '/tmp/uploads/' });
 
 app.use(express.json());
 app.use((req, res, next) => {
@@ -24,7 +33,7 @@ const pool = new Pool({
 
 pool.connect((err) => {
   if (err) {
-    console.error('Failed to connect to PostgreSQL:', err.message);
+    console.error('Failed to connectidedb connect to PostgreSQL:', err.message);
     process.exit(1);
   }
   console.log('Successfully connected to PostgreSQL');
@@ -443,7 +452,6 @@ app.get('/api/transactions/download', async (req, res) => {
   }
 });
 
-// New endpoint for monthly transaction reports
 app.get('/api/reports/monthly-transactions', async (req, res) => {
   try {
     const result = await pool.query(`
@@ -471,10 +479,8 @@ app.get('/api/reports/monthly-transactions', async (req, res) => {
   }
 });
 
-// New endpoint for fee comparison between this month and last month
 app.get('/api/reports/fee-comparison', async (req, res) => {
   try {
-    // Hardcoding current month as April 2025 and last month as March 2025 based on current date
     const thisMonth = '2025-04';
     const lastMonth = '2025-03';
 
@@ -497,6 +503,77 @@ app.get('/api/reports/fee-comparison', async (req, res) => {
   } catch (error) {
     console.error('Error fetching fee comparison:', error);
     res.status(500).json({ error: 'Failed to fetch fee comparison' });
+  }
+});
+
+// Backup endpoint
+app.get('/api/backup', async (req, res) => {
+  try {
+    const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
+    const backupFileName = `gcash_backup_${timestamp}.sql`;
+    const backupFilePath = path.join('/app/backups', backupFileName);
+
+    // Ensure the backups directory exists
+    const backupDir = '/app/backups';
+    if (!fs.existsSync(backupDir)) {
+      fs.mkdirSync(backupDir, { recursive: true });
+    }
+
+    // Use pg_dump to create a backup
+    const pgDumpCommand = `pg_dump -h postgres -U kfa -d gcash_db > ${backupFilePath}`;
+    await execPromise(pgDumpCommand, { env: { ...process.env, PGPASSWORD: 'root' } });
+
+    // Check if the backup file was created
+    if (!fs.existsSync(backupFilePath)) {
+      throw new Error('Backup file was not created');
+    }
+
+    // Explicitly set headers and send the file
+    res.setHeader('Content-Disposition', `attachment; filename="${backupFileName}"`);
+    res.setHeader('Content-Type', 'application/octet-stream');
+    res.sendFile(backupFilePath, (err) => {
+      if (err) {
+        console.error('Error sending backup file:', err);
+        res.status(500).json({ error: 'Failed to download backup file' });
+      }
+      // Note: File is retained on the host (fs.unlink removed previously)
+      console.log(`Backup file retained at: ${backupFilePath}`);
+    });
+  } catch (error) {
+    console.error('Error creating backup:', error);
+    res.status(500).json({ error: 'Failed to create backup' });
+  }
+});
+
+// Restore endpoint
+app.post('/api/restore', upload.single('backupFile'), async (req, res) => {
+  try {
+    if (!req.file) {
+      return res.status(400).json({ error: 'No backup file uploaded' });
+    }
+
+    const backupFilePath = req.file.path;
+
+    // Drop and recreate the database to ensure a clean restore
+    await pool.query('DROP SCHEMA public CASCADE');
+    await pool.query('CREATE SCHEMA public');
+
+    // Restore the database using psql
+    const psqlCommand = `psql -h postgres -U kfa -d gcash_db < ${backupFilePath}`;
+    await execPromise(psqlCommand, { env: { ...process.env, PGPASSWORD: 'root' } });
+
+    // Reinitialize the database to ensure schema consistency
+    await initializeDatabase();
+
+    // Clean up the uploaded file
+    fs.unlink(backupFilePath, (unlinkErr) => {
+      if (unlinkErr) console.error('Error deleting uploaded file:', unlinkErr);
+    });
+
+    res.status(200).json({ message: 'Database restored successfully' });
+  } catch (error) {
+    console.error('Error restoring database:', error);
+    res.status(500).json({ error: 'Failed to restore database' });
   }
 });
 

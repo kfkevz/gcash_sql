@@ -1,0 +1,1210 @@
+2025-04-29 15:38:18.266 UTC [1] LOG:  starting PostgreSQL 16.8 (Debian 16.8-1.pgdg120+1) on x86_64-pc-linux-gnu, compiled by gcc (Debian 12.2.0-14) 12.2.0, 64-bit
+2025-04-29 15:38:18.267 UTC [1] LOG:  listening on IPv4 address "0.0.0.0", port 5432
+2025-04-29 15:38:18.267 UTC [1] LOG:  listening on IPv6 address "::", port 5432
+2025-04-29 15:38:18.275 UTC [1] LOG:  listening on Unix socket "/var/run/postgresql/.s.PGSQL.5432"
+2025-04-29 15:38:18.284 UTC [66] LOG:  database system was shut down at 2025-04-29 15:38:18 UTC
+2025-04-29 15:38:18.292 UTC [1] LOG:  database system is ready to accept connections
+2025-04-29 15:38:22.803 UTC [79] LOG:  statement: 
+	      DO $$ 
+	      BEGIN
+	        IF EXISTS (SELECT 1 FROM pg_type WHERE typname = 'transaction_type') THEN
+	          DROP TYPE transaction_type CASCADE;
+	        END IF;
+	        CREATE TYPE transaction_type AS ENUM ('Cash In', 'Cash Out', 'Load');
+	      END $$;
+	    
+2025-04-29 15:38:22.812 UTC [79] LOG:  statement: 
+	      CREATE TABLE IF NOT EXISTS Transactions (
+	        id SERIAL PRIMARY KEY,
+	        date TEXT NOT NULL,
+	        time TEXT NOT NULL,
+	        type transaction_type NOT NULL,
+	        amount TEXT NOT NULL,
+	        name TEXT NOT NULL,
+	        ref TEXT NOT NULL,
+	        fee TEXT NOT NULL,
+	        remarks TEXT NOT NULL,
+	        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+	        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+	      );
+	    
+2025-04-29 15:38:22.834 UTC [79] LOG:  statement: 
+	      DO $$ 
+	      BEGIN
+	        IF NOT EXISTS (SELECT 1 FROM information_schema.columns 
+	                       WHERE table_name = 'transactions' AND column_name = 'created_at') THEN
+	          ALTER TABLE Transactions ADD COLUMN created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP;
+	        END IF;
+	        IF NOT EXISTS (SELECT 1 FROM information_schema.columns 
+	                       WHERE table_name = 'transactions' AND column_name = 'updated_at') THEN
+	          ALTER TABLE Transactions ADD COLUMN updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP;
+	        END IF;
+	      END $$;
+	    
+2025-04-29 15:38:22.849 UTC [79] LOG:  statement: 
+	      CREATE TABLE IF NOT EXISTS CurrentBalance (
+	        id SERIAL PRIMARY KEY,
+	        balance DECIMAL NOT NULL DEFAULT 0.00
+	      );
+	    
+2025-04-29 15:38:22.866 UTC [79] LOG:  statement: SELECT * FROM CurrentBalance
+2025-04-29 15:38:22.867 UTC [79] LOG:  statement: INSERT INTO CurrentBalance (balance) VALUES (0.00)
+2025-04-29 15:38:31.617 UTC [79] LOG:  statement: SELECT balance FROM CurrentBalance WHERE id = 1
+2025-04-29 15:38:31.634 UTC [79] LOG:  execute <unnamed>: SELECT * FROM Transactions WHERE date = $1 ORDER BY id DESC
+2025-04-29 15:38:31.634 UTC [79] DETAIL:  parameters: $1 = '2025-04-29'
+2025-04-29 15:38:31.651 UTC [88] LOG:  statement: SELECT * FROM Transactions ORDER BY id DESC LIMIT 1
+2025-04-29 15:38:31.668 UTC [88] LOG:  statement: SELECT * FROM Transactions ORDER BY id DESC LIMIT 1
+2025-04-29 15:38:38.536 UTC [88] LOG:  execute <unnamed>: SELECT * FROM Transactions WHERE date = $1 ORDER BY id DESC
+2025-04-29 15:38:38.536 UTC [88] DETAIL:  parameters: $1 = '2025-04-29'
+2025-04-29 15:38:38.557 UTC [88] LOG:  statement: SELECT * FROM Transactions ORDER BY id DESC LIMIT 1
+2025-04-29 15:38:40.349 UTC [88] LOG:  statement: SELECT balance FROM CurrentBalance WHERE id = 1
+2025-04-29 15:38:40.357 UTC [88] LOG:  execute <unnamed>: SELECT * FROM Transactions WHERE date = $1 ORDER BY id DESC
+2025-04-29 15:38:40.357 UTC [88] DETAIL:  parameters: $1 = '2025-04-29'
+2025-04-29 15:38:40.382 UTC [88] LOG:  statement: SELECT * FROM Transactions ORDER BY id DESC LIMIT 1
+2025-04-29 15:38:52.794 UTC [107] LOG:  execute <unnamed>: INSERT INTO Transactions (date, time, type, amount, name, ref, fee, remarks, created_at, updated_at)
+	       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
+	       RETURNING id
+2025-04-29 15:38:52.794 UTC [107] DETAIL:  parameters: $1 = '2025-04-29', $2 = '11:38', $3 = 'Cash In', $4 = '2000', $5 = 'KEV', $6 = '12322', $7 = '40', $8 = 'SENT'
+2025-04-29 15:38:52.800 UTC [107] LOG:  execute <unnamed>: UPDATE CurrentBalance SET balance = balance + $1 WHERE id = 1
+2025-04-29 15:38:52.800 UTC [107] DETAIL:  parameters: $1 = '-2000'
+2025-04-29 15:38:53.587 UTC [107] LOG:  execute <unnamed>: SELECT * FROM Transactions WHERE date = $1 ORDER BY id DESC
+2025-04-29 15:38:53.587 UTC [107] DETAIL:  parameters: $1 = '2025-04-29'
+2025-04-29 15:38:53.595 UTC [107] LOG:  statement: SELECT balance FROM CurrentBalance WHERE id = 1
+2025-04-29 15:38:53.610 UTC [107] LOG:  statement: SELECT * FROM Transactions ORDER BY id DESC LIMIT 1
+2025-04-29 15:39:05.156 UTC [116] LOG:  execute <unnamed>: INSERT INTO Transactions (date, time, type, amount, name, ref, fee, remarks, created_at, updated_at)
+	       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
+	       RETURNING id
+2025-04-29 15:39:05.156 UTC [116] DETAIL:  parameters: $1 = '2025-04-29', $2 = '11:38', $3 = 'Cash Out', $4 = '500', $5 = 'KFA', $6 = '12345', $7 = '10', $8 = 'CLAIMED'
+2025-04-29 15:39:05.161 UTC [116] LOG:  execute <unnamed>: UPDATE CurrentBalance SET balance = balance + $1 WHERE id = 1
+2025-04-29 15:39:05.161 UTC [116] DETAIL:  parameters: $1 = '500'
+2025-04-29 15:39:05.780 UTC [116] LOG:  execute <unnamed>: SELECT * FROM Transactions WHERE date = $1 ORDER BY id DESC
+2025-04-29 15:39:05.780 UTC [116] DETAIL:  parameters: $1 = '2025-04-29'
+2025-04-29 15:39:05.786 UTC [116] LOG:  statement: SELECT balance FROM CurrentBalance WHERE id = 1
+2025-04-29 15:39:05.796 UTC [116] LOG:  statement: SELECT * FROM Transactions ORDER BY id DESC LIMIT 1
+2025-04-29 15:39:21.410 UTC [126] LOG:  execute <unnamed>: INSERT INTO Transactions (date, time, type, amount, name, ref, fee, remarks, created_at, updated_at)
+	       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
+	       RETURNING id
+2025-04-29 15:39:21.410 UTC [126] DETAIL:  parameters: $1 = '2025-04-29', $2 = '11:39', $3 = 'Load', $4 = '20', $5 = 'AN20', $6 = '44121', $7 = '5', $8 = 'LOAD'
+2025-04-29 15:39:21.412 UTC [126] LOG:  execute <unnamed>: UPDATE CurrentBalance SET balance = balance + $1 WHERE id = 1
+2025-04-29 15:39:21.412 UTC [126] DETAIL:  parameters: $1 = '-20'
+2025-04-29 15:39:21.654 UTC [126] LOG:  execute <unnamed>: SELECT * FROM Transactions WHERE date = $1 ORDER BY id DESC
+2025-04-29 15:39:21.654 UTC [126] DETAIL:  parameters: $1 = '2025-04-29'
+2025-04-29 15:39:21.665 UTC [126] LOG:  statement: SELECT balance FROM CurrentBalance WHERE id = 1
+2025-04-29 15:39:21.668 UTC [126] LOG:  statement: SELECT * FROM Transactions ORDER BY id DESC LIMIT 1
+2025-04-29 15:39:25.166 UTC [135] LOG:  statement: SELECT pg_catalog.set_config('search_path', '', false);
+2025-04-29 15:39:25.170 UTC [135] LOG:  statement: SELECT pg_catalog.pg_is_in_recovery()
+2025-04-29 15:39:25.171 UTC [135] LOG:  statement: SELECT pg_catalog.set_config('search_path', '', false);
+2025-04-29 15:39:25.172 UTC [135] LOG:  statement: SET DATESTYLE = ISO
+2025-04-29 15:39:25.173 UTC [135] LOG:  statement: SET INTERVALSTYLE = POSTGRES
+2025-04-29 15:39:25.173 UTC [135] LOG:  statement: SET extra_float_digits TO 3
+2025-04-29 15:39:25.173 UTC [135] LOG:  statement: SET synchronize_seqscans TO off
+2025-04-29 15:39:25.174 UTC [135] LOG:  statement: SET statement_timeout = 0
+2025-04-29 15:39:25.174 UTC [135] LOG:  statement: SET lock_timeout = 0
+2025-04-29 15:39:25.175 UTC [135] LOG:  statement: SET idle_in_transaction_session_timeout = 0
+2025-04-29 15:39:25.175 UTC [135] LOG:  statement: SET row_security = off
+2025-04-29 15:39:25.176 UTC [135] LOG:  statement: SELECT set_config(name, 'view, foreign-table', false) FROM pg_settings WHERE name = 'restrict_nonsystem_relation_kind'
+2025-04-29 15:39:25.182 UTC [135] LOG:  statement: BEGIN
+2025-04-29 15:39:25.183 UTC [135] LOG:  statement: SET TRANSACTION ISOLATION LEVEL REPEATABLE READ, READ ONLY
+2025-04-29 15:39:25.183 UTC [135] LOG:  statement: SELECT oid, rolname FROM pg_catalog.pg_roles ORDER BY 1
+2025-04-29 15:39:25.187 UTC [135] LOG:  statement: SELECT x.tableoid, x.oid, x.extname, n.nspname, x.extrelocatable, x.extversion, x.extconfig, x.extcondition FROM pg_extension x JOIN pg_namespace n ON n.oid = x.extnamespace
+2025-04-29 15:39:25.193 UTC [135] LOG:  statement: SELECT classid, objid, refobjid FROM pg_depend WHERE refclassid = 'pg_extension'::regclass AND deptype = 'e' ORDER BY 3
+2025-04-29 15:39:25.201 UTC [135] LOG:  statement: SELECT n.tableoid, n.oid, n.nspname, n.nspowner, n.nspacl, acldefault('n', n.nspowner) AS acldefault FROM pg_namespace n
+2025-04-29 15:39:25.202 UTC [135] LOG:  statement: SELECT c.tableoid, c.oid, c.relname, c.relnamespace, c.relkind, c.reltype, c.relowner, c.relchecks, c.relhasindex, c.relhasrules, c.relpages, c.relhastriggers, c.relpersistence, c.reloftype, c.relacl, acldefault(CASE WHEN c.relkind = 'S' THEN 's'::"char" ELSE 'r'::"char" END, c.relowner) AS acldefault, CASE WHEN c.relkind = 'f' THEN (SELECT ftserver FROM pg_catalog.pg_foreign_table WHERE ftrelid = c.oid) ELSE 0 END AS foreignserver, c.relfrozenxid, tc.relfrozenxid AS tfrozenxid, tc.oid AS toid, tc.relpages AS toastpages, tc.reloptions AS toast_reloptions, d.refobjid AS owning_tab, d.refobjsubid AS owning_col, tsp.spcname AS reltablespace, false AS relhasoids, c.relispopulated, c.relreplident, c.relrowsecurity, c.relforcerowsecurity, c.relminmxid, tc.relminmxid AS tminmxid, array_remove(array_remove(c.reloptions,'check_option=local'),'check_option=cascaded') AS reloptions, CASE WHEN 'check_option=local' = ANY (c.reloptions) THEN 'LOCAL'::text WHEN 'check_option=cascaded' = ANY (c.reloptions) THEN 'CASCADED'::text ELSE NULL END AS checkoption, am.amname, (d.deptype = 'i') IS TRUE AS is_identity_sequence, c.relispartition AS ispartition 
+	FROM pg_class c
+	LEFT JOIN pg_depend d ON (c.relkind = 'S' AND d.classid = 'pg_class'::regclass AND d.objid = c.oid AND d.objsubid = 0 AND d.refclassid = 'pg_class'::regclass AND d.deptype IN ('a', 'i'))
+	LEFT JOIN pg_tablespace tsp ON (tsp.oid = c.reltablespace)
+	LEFT JOIN pg_am am ON (c.relam = am.oid)
+	LEFT JOIN pg_class tc ON (c.reltoastrelid = tc.oid AND tc.relkind = 't' AND c.relkind <> 'p')
+	WHERE c.relkind IN ('r', 'S', 'v', 'c', 'm', 'f', 'p')
+	ORDER BY c.oid
+2025-04-29 15:39:25.226 UTC [135] LOG:  statement: LOCK TABLE public.transactions, public.currentbalance IN ACCESS SHARE MODE
+2025-04-29 15:39:25.227 UTC [135] LOG:  statement: SELECT p.tableoid, p.oid, p.proname, p.prolang, p.pronargs, p.proargtypes, p.prorettype, p.proacl, acldefault('f', p.proowner) AS acldefault, p.pronamespace, p.proowner FROM pg_proc p LEFT JOIN pg_init_privs pip ON (p.oid = pip.objoid AND pip.classoid = 'pg_proc'::regclass AND pip.objsubid = 0) WHERE p.prokind <> 'a'
+	  AND NOT EXISTS (SELECT 1 FROM pg_depend WHERE classid = 'pg_proc'::regclass AND objid = p.oid AND deptype = 'i')
+	  AND (
+	  pronamespace != (SELECT oid FROM pg_namespace WHERE nspname = 'pg_catalog')
+	  OR EXISTS (SELECT 1 FROM pg_cast
+	  WHERE pg_cast.oid > 16383 
+	  AND p.oid = pg_cast.castfunc)
+	  OR EXISTS (SELECT 1 FROM pg_transform
+	  WHERE pg_transform.oid > 16383 AND 
+	  (p.oid = pg_transform.trffromsql
+	  OR p.oid = pg_transform.trftosql))
+	  OR p.proacl IS DISTINCT FROM pip.initprivs)
+2025-04-29 15:39:25.249 UTC [135] LOG:  statement: SELECT tableoid, oid, typname, typnamespace, typacl, acldefault('T', typowner) AS acldefault, typowner, typelem, typrelid, CASE WHEN typrelid = 0 THEN ' '::"char" ELSE (SELECT relkind FROM pg_class WHERE oid = typrelid) END AS typrelkind, typtype, typisdefined, typname[0] = '_' AND typelem != 0 AND (SELECT typarray FROM pg_type te WHERE oid = pg_type.typelem) = oid AS isarray FROM pg_type
+2025-04-29 15:39:25.259 UTC [135] LOG:  statement: SELECT tableoid, oid, lanname, lanpltrusted, lanplcallfoid, laninline, lanvalidator, lanacl, acldefault('l', lanowner) AS acldefault, lanowner FROM pg_language WHERE lanispl ORDER BY oid
+2025-04-29 15:39:25.262 UTC [135] LOG:  statement: SELECT p.tableoid, p.oid, p.proname AS aggname, p.pronamespace AS aggnamespace, p.pronargs, p.proargtypes, p.proowner, p.proacl AS aggacl, acldefault('f', p.proowner) AS acldefault FROM pg_proc p LEFT JOIN pg_init_privs pip ON (p.oid = pip.objoid AND pip.classoid = 'pg_proc'::regclass AND pip.objsubid = 0) WHERE p.prokind = 'a' AND (p.pronamespace != (SELECT oid FROM pg_namespace WHERE nspname = 'pg_catalog') OR p.proacl IS DISTINCT FROM pip.initprivs)
+2025-04-29 15:39:25.264 UTC [135] LOG:  statement: SELECT tableoid, oid, oprname, oprnamespace, oprowner, oprkind, oprcode::oid AS oprcode FROM pg_operator
+2025-04-29 15:39:25.266 UTC [135] LOG:  statement: SELECT tableoid, oid, amname, amtype, amhandler::pg_catalog.regproc AS amhandler FROM pg_am
+2025-04-29 15:39:25.270 UTC [135] LOG:  statement: SELECT tableoid, oid, opcname, opcnamespace, opcowner FROM pg_opclass
+2025-04-29 15:39:25.272 UTC [135] LOG:  statement: SELECT tableoid, oid, opfname, opfnamespace, opfowner FROM pg_opfamily
+2025-04-29 15:39:25.275 UTC [135] LOG:  statement: SELECT tableoid, oid, prsname, prsnamespace, prsstart::oid, prstoken::oid, prsend::oid, prsheadline::oid, prslextype::oid FROM pg_ts_parser
+2025-04-29 15:39:25.280 UTC [135] LOG:  statement: SELECT tableoid, oid, tmplname, tmplnamespace, tmplinit::oid, tmpllexize::oid FROM pg_ts_template
+2025-04-29 15:39:25.283 UTC [135] LOG:  statement: SELECT tableoid, oid, dictname, dictnamespace, dictowner, dicttemplate, dictinitoption FROM pg_ts_dict
+2025-04-29 15:39:25.287 UTC [135] LOG:  statement: SELECT tableoid, oid, cfgname, cfgnamespace, cfgowner, cfgparser FROM pg_ts_config
+2025-04-29 15:39:25.290 UTC [135] LOG:  statement: SELECT tableoid, oid, fdwname, fdwowner, fdwhandler::pg_catalog.regproc, fdwvalidator::pg_catalog.regproc, fdwacl, acldefault('F', fdwowner) AS acldefault, array_to_string(ARRAY(SELECT quote_ident(option_name) || ' ' || quote_literal(option_value) FROM pg_options_to_table(fdwoptions) ORDER BY option_name), E',
+	    ') AS fdwoptions FROM pg_foreign_data_wrapper
+2025-04-29 15:39:25.297 UTC [135] LOG:  statement: SELECT tableoid, oid, srvname, srvowner, srvfdw, srvtype, srvversion, srvacl, acldefault('S', srvowner) AS acldefault, array_to_string(ARRAY(SELECT quote_ident(option_name) || ' ' || quote_literal(option_value) FROM pg_options_to_table(srvoptions) ORDER BY option_name), E',
+	    ') AS srvoptions FROM pg_foreign_server
+2025-04-29 15:39:25.299 UTC [135] LOG:  statement: SELECT oid, tableoid, defaclrole, defaclnamespace, defaclobjtype, defaclacl, CASE WHEN defaclnamespace = 0 THEN acldefault(CASE WHEN defaclobjtype = 'S' THEN 's'::"char" ELSE defaclobjtype END, defaclrole) ELSE '{}' END AS acldefault FROM pg_default_acl
+2025-04-29 15:39:25.300 UTC [135] LOG:  statement: SELECT tableoid, oid, collname, collnamespace, collowner FROM pg_collation
+2025-04-29 15:39:25.304 UTC [135] LOG:  statement: SELECT tableoid, oid, conname, connamespace, conowner FROM pg_conversion
+2025-04-29 15:39:25.308 UTC [135] LOG:  statement: SELECT tableoid, oid, castsource, casttarget, castfunc, castcontext, castmethod FROM pg_cast c WHERE NOT EXISTS ( SELECT 1 FROM pg_range r WHERE c.castsource = r.rngtypid AND c.casttarget = r.rngmultitypid ) ORDER BY 3,4
+2025-04-29 15:39:25.312 UTC [135] LOG:  statement: SELECT tableoid, oid, trftype, trflang, trffromsql::oid, trftosql::oid FROM pg_transform ORDER BY 3,4
+2025-04-29 15:39:25.313 UTC [135] LOG:  statement: SELECT inhrelid, inhparent FROM pg_inherits
+2025-04-29 15:39:25.314 UTC [135] LOG:  statement: SELECT e.tableoid, e.oid, evtname, evtenabled, evtevent, evtowner, array_to_string(array(select quote_literal(x)  from unnest(evttags) as t(x)), ', ') as evttags, e.evtfoid::regproc as evtfname FROM pg_event_trigger e ORDER BY e.oid
+2025-04-29 15:39:25.317 UTC [135] LOG:  statement: SELECT conrelid, confrelid FROM pg_constraint JOIN pg_depend ON (objid = confrelid) WHERE contype = 'f' AND refclassid = 'pg_extension'::regclass AND classid = 'pg_class'::regclass;
+2025-04-29 15:39:25.318 UTC [135] LOG:  statement: SELECT
+	a.attrelid,
+	a.attnum,
+	a.attname,
+	a.attstattarget,
+	a.attstorage,
+	t.typstorage,
+	a.attnotnull,
+	a.atthasdef,
+	a.attisdropped,
+	a.attlen,
+	a.attalign,
+	a.attislocal,
+	pg_catalog.format_type(t.oid, a.atttypmod) AS atttypname,
+	array_to_string(a.attoptions, ', ') AS attoptions,
+	CASE WHEN a.attcollation <> t.typcollation THEN a.attcollation ELSE 0 END AS attcollation,
+	pg_catalog.array_to_string(ARRAY(SELECT pg_catalog.quote_ident(option_name) || ' ' || pg_catalog.quote_literal(option_value) FROM pg_catalog.pg_options_to_table(attfdwoptions) ORDER BY option_name), E',
+	    ') AS attfdwoptions,
+	a.attcompression AS attcompression,
+	a.attidentity,
+	CASE WHEN a.atthasmissing AND NOT a.attisdropped THEN a.attmissingval ELSE null END AS attmissingval,
+	a.attgenerated
+	FROM unnest('{16394,16405}'::pg_catalog.oid[]) AS src(tbloid)
+	JOIN pg_catalog.pg_attribute a ON (src.tbloid = a.attrelid) LEFT JOIN pg_catalog.pg_type t ON (a.atttypid = t.oid)
+	WHERE a.attnum > 0::pg_catalog.int2
+	ORDER BY a.attrelid, a.attnum
+2025-04-29 15:39:25.320 UTC [135] LOG:  statement: SELECT a.tableoid, a.oid, adrelid, adnum, pg_catalog.pg_get_expr(adbin, adrelid) AS adsrc
+	FROM unnest('{16394,16405}'::pg_catalog.oid[]) AS src(tbloid)
+	JOIN pg_catalog.pg_attrdef a ON (src.tbloid = a.adrelid)
+	ORDER BY a.adrelid, a.adnum
+2025-04-29 15:39:25.322 UTC [135] LOG:  statement: SELECT partrelid FROM pg_partitioned_table WHERE
+	(SELECT c.oid FROM pg_opclass c JOIN pg_am a ON c.opcmethod = a.oid
+	WHERE opcname = 'enum_ops' AND opcnamespace = 'pg_catalog'::regnamespace AND amname = 'hash') = ANY(partclass)
+2025-04-29 15:39:25.323 UTC [135] LOG:  statement: SELECT t.tableoid, t.oid, i.indrelid, t.relname AS indexname, pg_catalog.pg_get_indexdef(i.indexrelid) AS indexdef, i.indkey, i.indisclustered, c.contype, c.conname, c.condeferrable, c.condeferred, c.tableoid AS contableoid, c.oid AS conoid, pg_catalog.pg_get_constraintdef(c.oid, false) AS condef, (SELECT spcname FROM pg_catalog.pg_tablespace s WHERE s.oid = t.reltablespace) AS tablespace, t.reloptions AS indreloptions, i.indisreplident, inh.inhparent AS parentidx, i.indnkeyatts AS indnkeyatts, i.indnatts AS indnatts, (SELECT pg_catalog.array_agg(attnum ORDER BY attnum)   FROM pg_catalog.pg_attribute   WHERE attrelid = i.indexrelid AND     attstattarget >= 0) AS indstatcols, (SELECT pg_catalog.array_agg(attstattarget ORDER BY attnum)   FROM pg_catalog.pg_attribute   WHERE attrelid = i.indexrelid AND     attstattarget >= 0) AS indstatvals, i.indnullsnotdistinct FROM unnest('{16394,16405}'::pg_catalog.oid[]) AS src(tbloid)
+	JOIN pg_catalog.pg_index i ON (src.tbloid = i.indrelid) JOIN pg_catalog.pg_class t ON (t.oid = i.indexrelid) JOIN pg_catalog.pg_class t2 ON (t2.oid = i.indrelid) LEFT JOIN pg_catalog.pg_constraint c ON (i.indrelid = c.conrelid AND i.indexrelid = c.conindid AND c.contype IN ('p','u','x')) LEFT JOIN pg_catalog.pg_inherits inh ON (inh.inhrelid = indexrelid) WHERE (i.indisvalid OR t2.relkind = 'p') AND i.indisready ORDER BY i.indrelid, indexname
+2025-04-29 15:39:25.327 UTC [135] LOG:  statement: SELECT tableoid, oid, stxname, stxnamespace, stxowner, stxrelid, stxstattarget FROM pg_catalog.pg_statistic_ext
+2025-04-29 15:39:25.328 UTC [135] LOG:  statement: SELECT c.tableoid, c.oid, conrelid, conname, confrelid, conindid, pg_catalog.pg_get_constraintdef(c.oid) AS condef
+	FROM unnest('{}'::pg_catalog.oid[]) AS src(tbloid)
+	JOIN pg_catalog.pg_constraint c ON (src.tbloid = c.conrelid)
+	WHERE contype = 'f' AND conparentid = 0 ORDER BY conrelid, conname
+2025-04-29 15:39:25.329 UTC [135] LOG:  statement: SELECT t.tgrelid, t.tgname, t.tgfoid::pg_catalog.regproc AS tgfname, pg_catalog.pg_get_triggerdef(t.oid, false) AS tgdef, t.tgenabled, t.tableoid, t.oid, t.tgparentid <> 0 AS tgispartition
+	FROM unnest('{}'::pg_catalog.oid[]) AS src(tbloid)
+	JOIN pg_catalog.pg_trigger t ON (src.tbloid = t.tgrelid) LEFT JOIN pg_catalog.pg_trigger u ON (u.oid = t.tgparentid) WHERE ((NOT t.tgisinternal AND t.tgparentid = 0) OR t.tgenabled != u.tgenabled) ORDER BY t.tgrelid, t.tgname
+2025-04-29 15:39:25.334 UTC [135] LOG:  statement: SELECT tableoid, oid, rulename, ev_class AS ruletable, ev_type, is_instead, ev_enabled FROM pg_rewrite ORDER BY oid
+2025-04-29 15:39:25.337 UTC [135] LOG:  statement: SELECT pol.oid, pol.tableoid, pol.polrelid, pol.polname, pol.polcmd, pol.polpermissive, CASE WHEN pol.polroles = '{0}' THEN NULL ELSE    pg_catalog.array_to_string(ARRAY(SELECT pg_catalog.quote_ident(rolname) from pg_catalog.pg_roles WHERE oid = ANY(pol.polroles)), ', ') END AS polroles, pg_catalog.pg_get_expr(pol.polqual, pol.polrelid) AS polqual, pg_catalog.pg_get_expr(pol.polwithcheck, pol.polrelid) AS polwithcheck FROM unnest('{16394,16405}'::pg_catalog.oid[]) AS src(tbloid)
+	JOIN pg_catalog.pg_policy pol ON (src.tbloid = pol.polrelid)
+2025-04-29 15:39:25.339 UTC [135] LOG:  statement: SELECT p.tableoid, p.oid, p.pubname, p.pubowner, p.puballtables, p.pubinsert, p.pubupdate, p.pubdelete, p.pubtruncate, p.pubviaroot FROM pg_publication p
+2025-04-29 15:39:25.340 UTC [135] LOG:  statement: SELECT tableoid, oid, prpubid, prrelid, pg_catalog.pg_get_expr(prqual, prrelid) AS prrelqual, (CASE
+	  WHEN pr.prattrs IS NOT NULL THEN
+	    (SELECT array_agg(attname)
+	       FROM
+	         pg_catalog.generate_series(0, pg_catalog.array_upper(pr.prattrs::pg_catalog.int2[], 1)) s,
+	         pg_catalog.pg_attribute
+	      WHERE attrelid = pr.prrelid AND attnum = prattrs[s])
+	  ELSE NULL END) prattrs FROM pg_catalog.pg_publication_rel pr
+2025-04-29 15:39:25.342 UTC [135] LOG:  statement: SELECT tableoid, oid, pnpubid, pnnspid FROM pg_catalog.pg_publication_namespace
+2025-04-29 15:39:25.343 UTC [135] LOG:  statement: SELECT s.tableoid, s.oid, s.subname,
+	 s.subowner,
+	 s.subconninfo, s.subslotname, s.subsynccommit,
+	 s.subpublications,
+	 s.subbinary,
+	 s.substream,
+	 s.subtwophasestate,
+	 s.subdisableonerr,
+	 s.subpasswordrequired,
+	 s.subrunasowner,
+	 s.suborigin
+	FROM pg_subscription s
+	WHERE s.subdbid = (SELECT oid FROM pg_database
+	                   WHERE datname = current_database())
+2025-04-29 15:39:25.345 UTC [135] LOG:  statement: WITH RECURSIVE w AS ( SELECT d1.objid, d2.refobjid, c2.relkind AS refrelkind FROM pg_depend d1 JOIN pg_class c1 ON c1.oid = d1.objid AND c1.relkind = 'm' JOIN pg_rewrite r1 ON r1.ev_class = d1.objid JOIN pg_depend d2 ON d2.classid = 'pg_rewrite'::regclass AND d2.objid = r1.oid AND d2.refobjid <> d1.objid JOIN pg_class c2 ON c2.oid = d2.refobjid AND c2.relkind IN ('m','v') WHERE d1.classid = 'pg_class'::regclass UNION SELECT w.objid, d3.refobjid, c3.relkind FROM w JOIN pg_rewrite r3 ON r3.ev_class = w.refobjid JOIN pg_depend d3 ON d3.classid = 'pg_rewrite'::regclass AND d3.objid = r3.oid AND d3.refobjid <> w.refobjid JOIN pg_class c3 ON c3.oid = d3.refobjid AND c3.relkind IN ('m','v') ) SELECT 'pg_class'::regclass::oid AS classid, objid, refobjid FROM w WHERE refrelkind = 'm'
+2025-04-29 15:39:25.347 UTC [135] LOG:  statement: SELECT oid, lomowner, lomacl, acldefault('L', lomowner) AS acldefault FROM pg_largeobject_metadata
+2025-04-29 15:39:25.348 UTC [135] LOG:  statement: SELECT classid, objid, refclassid, refobjid, deptype FROM pg_depend WHERE deptype != 'p' AND deptype != 'e'
+	UNION ALL
+	SELECT 'pg_opfamily'::regclass AS classid, amopfamily AS objid, refclassid, refobjid, deptype FROM pg_depend d, pg_amop o WHERE deptype NOT IN ('p', 'e', 'i') AND classid = 'pg_amop'::regclass AND objid = o.oid AND NOT (refclassid = 'pg_opfamily'::regclass AND amopfamily = refobjid)
+	UNION ALL
+	SELECT 'pg_opfamily'::regclass AS classid, amprocfamily AS objid, refclassid, refobjid, deptype FROM pg_depend d, pg_amproc p WHERE deptype NOT IN ('p', 'e', 'i') AND classid = 'pg_amproc'::regclass AND objid = p.oid AND NOT (refclassid = 'pg_opfamily'::regclass AND amprocfamily = refobjid)
+	ORDER BY 1,2
+2025-04-29 15:39:25.355 UTC [135] LOG:  statement: SELECT DISTINCT attrelid FROM pg_attribute WHERE attacl IS NOT NULL
+2025-04-29 15:39:25.358 UTC [135] LOG:  statement: SELECT objoid, classoid, objsubid, privtype, initprivs FROM pg_init_privs
+2025-04-29 15:39:25.359 UTC [135] LOG:  statement: SELECT description, classoid, objoid, objsubid FROM pg_catalog.pg_description ORDER BY classoid, objoid, objsubid
+2025-04-29 15:39:25.371 UTC [135] LOG:  statement: SELECT label, provider, classoid, objoid, objsubid FROM pg_catalog.pg_seclabel ORDER BY classoid, objoid, objsubid
+2025-04-29 15:39:25.375 UTC [135] LOG:  statement: SELECT pg_catalog.current_schemas(false)
+2025-04-29 15:39:25.375 UTC [135] LOG:  statement: PREPARE dumpEnumType(pg_catalog.oid) AS
+	SELECT oid, enumlabel FROM pg_catalog.pg_enum WHERE enumtypid = $1 ORDER BY enumsortorder
+2025-04-29 15:39:25.376 UTC [135] LOG:  statement: EXECUTE dumpEnumType('16386')
+2025-04-29 15:39:25.376 UTC [135] DETAIL:  prepare: PREPARE dumpEnumType(pg_catalog.oid) AS
+	SELECT oid, enumlabel FROM pg_catalog.pg_enum WHERE enumtypid = $1 ORDER BY enumsortorder
+2025-04-29 15:39:25.377 UTC [135] LOG:  statement: PREPARE getColumnACLs(pg_catalog.oid) AS
+	SELECT at.attname, at.attacl, '{}' AS acldefault, pip.privtype, pip.initprivs FROM pg_catalog.pg_attribute at LEFT JOIN pg_catalog.pg_init_privs pip ON (at.attrelid = pip.objoid AND pip.classoid = 'pg_catalog.pg_class'::pg_catalog.regclass AND at.attnum = pip.objsubid) WHERE at.attrelid = $1 AND NOT at.attisdropped AND (at.attacl IS NOT NULL OR pip.initprivs IS NOT NULL) ORDER BY at.attnum
+2025-04-29 15:39:25.377 UTC [135] LOG:  statement: EXECUTE getColumnACLs('6100')
+2025-04-29 15:39:25.377 UTC [135] DETAIL:  prepare: PREPARE getColumnACLs(pg_catalog.oid) AS
+	SELECT at.attname, at.attacl, '{}' AS acldefault, pip.privtype, pip.initprivs FROM pg_catalog.pg_attribute at LEFT JOIN pg_catalog.pg_init_privs pip ON (at.attrelid = pip.objoid AND pip.classoid = 'pg_catalog.pg_class'::pg_catalog.regclass AND at.attnum = pip.objsubid) WHERE at.attrelid = $1 AND NOT at.attisdropped AND (at.attacl IS NOT NULL OR pip.initprivs IS NOT NULL) ORDER BY at.attnum
+2025-04-29 15:39:25.379 UTC [135] LOG:  statement: SELECT format_type(seqtypid, NULL), seqstart, seqincrement, seqmax, seqmin, seqcache, seqcycle FROM pg_catalog.pg_sequence WHERE seqrelid = '16404'::oid
+2025-04-29 15:39:25.379 UTC [135] LOG:  statement: SELECT format_type(seqtypid, NULL), seqstart, seqincrement, seqmax, seqmin, seqcache, seqcycle FROM pg_catalog.pg_sequence WHERE seqrelid = '16393'::oid
+2025-04-29 15:39:25.380 UTC [135] LOG:  statement: SELECT last_value, is_called FROM public.currentbalance_id_seq
+2025-04-29 15:39:25.380 UTC [135] LOG:  statement: SELECT last_value, is_called FROM public.transactions_id_seq
+2025-04-29 15:39:25.381 UTC [135] LOG:  statement: COPY public.currentbalance (id, balance) TO stdout;
+2025-04-29 15:39:25.381 UTC [135] LOG:  statement: COPY public.transactions (id, date, "time", type, amount, name, ref, fee, remarks, created_at, updated_at) TO stdout;
+2025-04-29 15:39:53.073 UTC [163] LOG:  statement: SELECT pg_catalog.set_config('search_path', '', false);
+2025-04-29 15:39:53.073 UTC [163] LOG:  statement: SELECT pg_catalog.pg_is_in_recovery()
+2025-04-29 15:39:53.074 UTC [163] LOG:  statement: SELECT pg_catalog.set_config('search_path', '', false);
+2025-04-29 15:39:53.074 UTC [163] LOG:  statement: SET DATESTYLE = ISO
+2025-04-29 15:39:53.075 UTC [163] LOG:  statement: SET INTERVALSTYLE = POSTGRES
+2025-04-29 15:39:53.075 UTC [163] LOG:  statement: SET extra_float_digits TO 3
+2025-04-29 15:39:53.075 UTC [163] LOG:  statement: SET synchronize_seqscans TO off
+2025-04-29 15:39:53.075 UTC [163] LOG:  statement: SET statement_timeout = 0
+2025-04-29 15:39:53.076 UTC [163] LOG:  statement: SET lock_timeout = 0
+2025-04-29 15:39:53.076 UTC [163] LOG:  statement: SET idle_in_transaction_session_timeout = 0
+2025-04-29 15:39:53.077 UTC [163] LOG:  statement: SET row_security = off
+2025-04-29 15:39:53.077 UTC [163] LOG:  statement: SELECT set_config(name, 'view, foreign-table', false) FROM pg_settings WHERE name = 'restrict_nonsystem_relation_kind'
+2025-04-29 15:39:53.079 UTC [163] LOG:  statement: BEGIN
+2025-04-29 15:39:53.079 UTC [163] LOG:  statement: SET TRANSACTION ISOLATION LEVEL REPEATABLE READ, READ ONLY
+2025-04-29 15:39:53.079 UTC [163] LOG:  statement: SELECT oid, rolname FROM pg_catalog.pg_roles ORDER BY 1
+2025-04-29 15:39:53.081 UTC [163] LOG:  statement: SELECT x.tableoid, x.oid, x.extname, n.nspname, x.extrelocatable, x.extversion, x.extconfig, x.extcondition FROM pg_extension x JOIN pg_namespace n ON n.oid = x.extnamespace
+2025-04-29 15:39:53.081 UTC [163] LOG:  statement: SELECT classid, objid, refobjid FROM pg_depend WHERE refclassid = 'pg_extension'::regclass AND deptype = 'e' ORDER BY 3
+2025-04-29 15:39:53.083 UTC [163] LOG:  statement: SELECT n.tableoid, n.oid, n.nspname, n.nspowner, n.nspacl, acldefault('n', n.nspowner) AS acldefault FROM pg_namespace n
+2025-04-29 15:39:53.083 UTC [163] LOG:  statement: SELECT c.tableoid, c.oid, c.relname, c.relnamespace, c.relkind, c.reltype, c.relowner, c.relchecks, c.relhasindex, c.relhasrules, c.relpages, c.relhastriggers, c.relpersistence, c.reloftype, c.relacl, acldefault(CASE WHEN c.relkind = 'S' THEN 's'::"char" ELSE 'r'::"char" END, c.relowner) AS acldefault, CASE WHEN c.relkind = 'f' THEN (SELECT ftserver FROM pg_catalog.pg_foreign_table WHERE ftrelid = c.oid) ELSE 0 END AS foreignserver, c.relfrozenxid, tc.relfrozenxid AS tfrozenxid, tc.oid AS toid, tc.relpages AS toastpages, tc.reloptions AS toast_reloptions, d.refobjid AS owning_tab, d.refobjsubid AS owning_col, tsp.spcname AS reltablespace, false AS relhasoids, c.relispopulated, c.relreplident, c.relrowsecurity, c.relforcerowsecurity, c.relminmxid, tc.relminmxid AS tminmxid, array_remove(array_remove(c.reloptions,'check_option=local'),'check_option=cascaded') AS reloptions, CASE WHEN 'check_option=local' = ANY (c.reloptions) THEN 'LOCAL'::text WHEN 'check_option=cascaded' = ANY (c.reloptions) THEN 'CASCADED'::text ELSE NULL END AS checkoption, am.amname, (d.deptype = 'i') IS TRUE AS is_identity_sequence, c.relispartition AS ispartition 
+	FROM pg_class c
+	LEFT JOIN pg_depend d ON (c.relkind = 'S' AND d.classid = 'pg_class'::regclass AND d.objid = c.oid AND d.objsubid = 0 AND d.refclassid = 'pg_class'::regclass AND d.deptype IN ('a', 'i'))
+	LEFT JOIN pg_tablespace tsp ON (tsp.oid = c.reltablespace)
+	LEFT JOIN pg_am am ON (c.relam = am.oid)
+	LEFT JOIN pg_class tc ON (c.reltoastrelid = tc.oid AND tc.relkind = 't' AND c.relkind <> 'p')
+	WHERE c.relkind IN ('r', 'S', 'v', 'c', 'm', 'f', 'p')
+	ORDER BY c.oid
+2025-04-29 15:39:53.088 UTC [163] LOG:  statement: LOCK TABLE public.transactions, public.currentbalance IN ACCESS SHARE MODE
+2025-04-29 15:39:53.088 UTC [163] LOG:  statement: SELECT p.tableoid, p.oid, p.proname, p.prolang, p.pronargs, p.proargtypes, p.prorettype, p.proacl, acldefault('f', p.proowner) AS acldefault, p.pronamespace, p.proowner FROM pg_proc p LEFT JOIN pg_init_privs pip ON (p.oid = pip.objoid AND pip.classoid = 'pg_proc'::regclass AND pip.objsubid = 0) WHERE p.prokind <> 'a'
+	  AND NOT EXISTS (SELECT 1 FROM pg_depend WHERE classid = 'pg_proc'::regclass AND objid = p.oid AND deptype = 'i')
+	  AND (
+	  pronamespace != (SELECT oid FROM pg_namespace WHERE nspname = 'pg_catalog')
+	  OR EXISTS (SELECT 1 FROM pg_cast
+	  WHERE pg_cast.oid > 16383 
+	  AND p.oid = pg_cast.castfunc)
+	  OR EXISTS (SELECT 1 FROM pg_transform
+	  WHERE pg_transform.oid > 16383 AND 
+	  (p.oid = pg_transform.trffromsql
+	  OR p.oid = pg_transform.trftosql))
+	  OR p.proacl IS DISTINCT FROM pip.initprivs)
+2025-04-29 15:39:53.092 UTC [163] LOG:  statement: SELECT tableoid, oid, typname, typnamespace, typacl, acldefault('T', typowner) AS acldefault, typowner, typelem, typrelid, CASE WHEN typrelid = 0 THEN ' '::"char" ELSE (SELECT relkind FROM pg_class WHERE oid = typrelid) END AS typrelkind, typtype, typisdefined, typname[0] = '_' AND typelem != 0 AND (SELECT typarray FROM pg_type te WHERE oid = pg_type.typelem) = oid AS isarray FROM pg_type
+2025-04-29 15:39:53.095 UTC [163] LOG:  statement: SELECT tableoid, oid, lanname, lanpltrusted, lanplcallfoid, laninline, lanvalidator, lanacl, acldefault('l', lanowner) AS acldefault, lanowner FROM pg_language WHERE lanispl ORDER BY oid
+2025-04-29 15:39:53.096 UTC [163] LOG:  statement: SELECT p.tableoid, p.oid, p.proname AS aggname, p.pronamespace AS aggnamespace, p.pronargs, p.proargtypes, p.proowner, p.proacl AS aggacl, acldefault('f', p.proowner) AS acldefault FROM pg_proc p LEFT JOIN pg_init_privs pip ON (p.oid = pip.objoid AND pip.classoid = 'pg_proc'::regclass AND pip.objsubid = 0) WHERE p.prokind = 'a' AND (p.pronamespace != (SELECT oid FROM pg_namespace WHERE nspname = 'pg_catalog') OR p.proacl IS DISTINCT FROM pip.initprivs)
+2025-04-29 15:39:53.097 UTC [163] LOG:  statement: SELECT tableoid, oid, oprname, oprnamespace, oprowner, oprkind, oprcode::oid AS oprcode FROM pg_operator
+2025-04-29 15:39:53.099 UTC [163] LOG:  statement: SELECT tableoid, oid, amname, amtype, amhandler::pg_catalog.regproc AS amhandler FROM pg_am
+2025-04-29 15:39:53.099 UTC [163] LOG:  statement: SELECT tableoid, oid, opcname, opcnamespace, opcowner FROM pg_opclass
+2025-04-29 15:39:53.100 UTC [163] LOG:  statement: SELECT tableoid, oid, opfname, opfnamespace, opfowner FROM pg_opfamily
+2025-04-29 15:39:53.100 UTC [163] LOG:  statement: SELECT tableoid, oid, prsname, prsnamespace, prsstart::oid, prstoken::oid, prsend::oid, prsheadline::oid, prslextype::oid FROM pg_ts_parser
+2025-04-29 15:39:53.101 UTC [163] LOG:  statement: SELECT tableoid, oid, tmplname, tmplnamespace, tmplinit::oid, tmpllexize::oid FROM pg_ts_template
+2025-04-29 15:39:53.101 UTC [163] LOG:  statement: SELECT tableoid, oid, dictname, dictnamespace, dictowner, dicttemplate, dictinitoption FROM pg_ts_dict
+2025-04-29 15:39:53.102 UTC [163] LOG:  statement: SELECT tableoid, oid, cfgname, cfgnamespace, cfgowner, cfgparser FROM pg_ts_config
+2025-04-29 15:39:53.102 UTC [163] LOG:  statement: SELECT tableoid, oid, fdwname, fdwowner, fdwhandler::pg_catalog.regproc, fdwvalidator::pg_catalog.regproc, fdwacl, acldefault('F', fdwowner) AS acldefault, array_to_string(ARRAY(SELECT quote_ident(option_name) || ' ' || quote_literal(option_value) FROM pg_options_to_table(fdwoptions) ORDER BY option_name), E',
+	    ') AS fdwoptions FROM pg_foreign_data_wrapper
+2025-04-29 15:39:53.103 UTC [163] LOG:  statement: SELECT tableoid, oid, srvname, srvowner, srvfdw, srvtype, srvversion, srvacl, acldefault('S', srvowner) AS acldefault, array_to_string(ARRAY(SELECT quote_ident(option_name) || ' ' || quote_literal(option_value) FROM pg_options_to_table(srvoptions) ORDER BY option_name), E',
+	    ') AS srvoptions FROM pg_foreign_server
+2025-04-29 15:39:53.103 UTC [163] LOG:  statement: SELECT oid, tableoid, defaclrole, defaclnamespace, defaclobjtype, defaclacl, CASE WHEN defaclnamespace = 0 THEN acldefault(CASE WHEN defaclobjtype = 'S' THEN 's'::"char" ELSE defaclobjtype END, defaclrole) ELSE '{}' END AS acldefault FROM pg_default_acl
+2025-04-29 15:39:53.104 UTC [163] LOG:  statement: SELECT tableoid, oid, collname, collnamespace, collowner FROM pg_collation
+2025-04-29 15:39:53.105 UTC [163] LOG:  statement: SELECT tableoid, oid, conname, connamespace, conowner FROM pg_conversion
+2025-04-29 15:39:53.106 UTC [163] LOG:  statement: SELECT tableoid, oid, castsource, casttarget, castfunc, castcontext, castmethod FROM pg_cast c WHERE NOT EXISTS ( SELECT 1 FROM pg_range r WHERE c.castsource = r.rngtypid AND c.casttarget = r.rngmultitypid ) ORDER BY 3,4
+2025-04-29 15:39:53.107 UTC [163] LOG:  statement: SELECT tableoid, oid, trftype, trflang, trffromsql::oid, trftosql::oid FROM pg_transform ORDER BY 3,4
+2025-04-29 15:39:53.107 UTC [163] LOG:  statement: SELECT inhrelid, inhparent FROM pg_inherits
+2025-04-29 15:39:53.108 UTC [163] LOG:  statement: SELECT e.tableoid, e.oid, evtname, evtenabled, evtevent, evtowner, array_to_string(array(select quote_literal(x)  from unnest(evttags) as t(x)), ', ') as evttags, e.evtfoid::regproc as evtfname FROM pg_event_trigger e ORDER BY e.oid
+2025-04-29 15:39:53.108 UTC [163] LOG:  statement: SELECT conrelid, confrelid FROM pg_constraint JOIN pg_depend ON (objid = confrelid) WHERE contype = 'f' AND refclassid = 'pg_extension'::regclass AND classid = 'pg_class'::regclass;
+2025-04-29 15:39:53.109 UTC [163] LOG:  statement: SELECT
+	a.attrelid,
+	a.attnum,
+	a.attname,
+	a.attstattarget,
+	a.attstorage,
+	t.typstorage,
+	a.attnotnull,
+	a.atthasdef,
+	a.attisdropped,
+	a.attlen,
+	a.attalign,
+	a.attislocal,
+	pg_catalog.format_type(t.oid, a.atttypmod) AS atttypname,
+	array_to_string(a.attoptions, ', ') AS attoptions,
+	CASE WHEN a.attcollation <> t.typcollation THEN a.attcollation ELSE 0 END AS attcollation,
+	pg_catalog.array_to_string(ARRAY(SELECT pg_catalog.quote_ident(option_name) || ' ' || pg_catalog.quote_literal(option_value) FROM pg_catalog.pg_options_to_table(attfdwoptions) ORDER BY option_name), E',
+	    ') AS attfdwoptions,
+	a.attcompression AS attcompression,
+	a.attidentity,
+	CASE WHEN a.atthasmissing AND NOT a.attisdropped THEN a.attmissingval ELSE null END AS attmissingval,
+	a.attgenerated
+	FROM unnest('{16394,16405}'::pg_catalog.oid[]) AS src(tbloid)
+	JOIN pg_catalog.pg_attribute a ON (src.tbloid = a.attrelid) LEFT JOIN pg_catalog.pg_type t ON (a.atttypid = t.oid)
+	WHERE a.attnum > 0::pg_catalog.int2
+	ORDER BY a.attrelid, a.attnum
+2025-04-29 15:39:53.111 UTC [163] LOG:  statement: SELECT a.tableoid, a.oid, adrelid, adnum, pg_catalog.pg_get_expr(adbin, adrelid) AS adsrc
+	FROM unnest('{16394,16405}'::pg_catalog.oid[]) AS src(tbloid)
+	JOIN pg_catalog.pg_attrdef a ON (src.tbloid = a.adrelid)
+	ORDER BY a.adrelid, a.adnum
+2025-04-29 15:39:53.112 UTC [163] LOG:  statement: SELECT partrelid FROM pg_partitioned_table WHERE
+	(SELECT c.oid FROM pg_opclass c JOIN pg_am a ON c.opcmethod = a.oid
+	WHERE opcname = 'enum_ops' AND opcnamespace = 'pg_catalog'::regnamespace AND amname = 'hash') = ANY(partclass)
+2025-04-29 15:39:53.112 UTC [163] LOG:  statement: SELECT t.tableoid, t.oid, i.indrelid, t.relname AS indexname, pg_catalog.pg_get_indexdef(i.indexrelid) AS indexdef, i.indkey, i.indisclustered, c.contype, c.conname, c.condeferrable, c.condeferred, c.tableoid AS contableoid, c.oid AS conoid, pg_catalog.pg_get_constraintdef(c.oid, false) AS condef, (SELECT spcname FROM pg_catalog.pg_tablespace s WHERE s.oid = t.reltablespace) AS tablespace, t.reloptions AS indreloptions, i.indisreplident, inh.inhparent AS parentidx, i.indnkeyatts AS indnkeyatts, i.indnatts AS indnatts, (SELECT pg_catalog.array_agg(attnum ORDER BY attnum)   FROM pg_catalog.pg_attribute   WHERE attrelid = i.indexrelid AND     attstattarget >= 0) AS indstatcols, (SELECT pg_catalog.array_agg(attstattarget ORDER BY attnum)   FROM pg_catalog.pg_attribute   WHERE attrelid = i.indexrelid AND     attstattarget >= 0) AS indstatvals, i.indnullsnotdistinct FROM unnest('{16394,16405}'::pg_catalog.oid[]) AS src(tbloid)
+	JOIN pg_catalog.pg_index i ON (src.tbloid = i.indrelid) JOIN pg_catalog.pg_class t ON (t.oid = i.indexrelid) JOIN pg_catalog.pg_class t2 ON (t2.oid = i.indrelid) LEFT JOIN pg_catalog.pg_constraint c ON (i.indrelid = c.conrelid AND i.indexrelid = c.conindid AND c.contype IN ('p','u','x')) LEFT JOIN pg_catalog.pg_inherits inh ON (inh.inhrelid = indexrelid) WHERE (i.indisvalid OR t2.relkind = 'p') AND i.indisready ORDER BY i.indrelid, indexname
+2025-04-29 15:39:53.115 UTC [163] LOG:  statement: SELECT tableoid, oid, stxname, stxnamespace, stxowner, stxrelid, stxstattarget FROM pg_catalog.pg_statistic_ext
+2025-04-29 15:39:53.115 UTC [163] LOG:  statement: SELECT c.tableoid, c.oid, conrelid, conname, confrelid, conindid, pg_catalog.pg_get_constraintdef(c.oid) AS condef
+	FROM unnest('{}'::pg_catalog.oid[]) AS src(tbloid)
+	JOIN pg_catalog.pg_constraint c ON (src.tbloid = c.conrelid)
+	WHERE contype = 'f' AND conparentid = 0 ORDER BY conrelid, conname
+2025-04-29 15:39:53.116 UTC [163] LOG:  statement: SELECT t.tgrelid, t.tgname, t.tgfoid::pg_catalog.regproc AS tgfname, pg_catalog.pg_get_triggerdef(t.oid, false) AS tgdef, t.tgenabled, t.tableoid, t.oid, t.tgparentid <> 0 AS tgispartition
+	FROM unnest('{}'::pg_catalog.oid[]) AS src(tbloid)
+	JOIN pg_catalog.pg_trigger t ON (src.tbloid = t.tgrelid) LEFT JOIN pg_catalog.pg_trigger u ON (u.oid = t.tgparentid) WHERE ((NOT t.tgisinternal AND t.tgparentid = 0) OR t.tgenabled != u.tgenabled) ORDER BY t.tgrelid, t.tgname
+2025-04-29 15:39:53.116 UTC [163] LOG:  statement: SELECT tableoid, oid, rulename, ev_class AS ruletable, ev_type, is_instead, ev_enabled FROM pg_rewrite ORDER BY oid
+2025-04-29 15:39:53.117 UTC [163] LOG:  statement: SELECT pol.oid, pol.tableoid, pol.polrelid, pol.polname, pol.polcmd, pol.polpermissive, CASE WHEN pol.polroles = '{0}' THEN NULL ELSE    pg_catalog.array_to_string(ARRAY(SELECT pg_catalog.quote_ident(rolname) from pg_catalog.pg_roles WHERE oid = ANY(pol.polroles)), ', ') END AS polroles, pg_catalog.pg_get_expr(pol.polqual, pol.polrelid) AS polqual, pg_catalog.pg_get_expr(pol.polwithcheck, pol.polrelid) AS polwithcheck FROM unnest('{16394,16405}'::pg_catalog.oid[]) AS src(tbloid)
+	JOIN pg_catalog.pg_policy pol ON (src.tbloid = pol.polrelid)
+2025-04-29 15:39:53.118 UTC [163] LOG:  statement: SELECT p.tableoid, p.oid, p.pubname, p.pubowner, p.puballtables, p.pubinsert, p.pubupdate, p.pubdelete, p.pubtruncate, p.pubviaroot FROM pg_publication p
+2025-04-29 15:39:53.119 UTC [163] LOG:  statement: SELECT tableoid, oid, prpubid, prrelid, pg_catalog.pg_get_expr(prqual, prrelid) AS prrelqual, (CASE
+	  WHEN pr.prattrs IS NOT NULL THEN
+	    (SELECT array_agg(attname)
+	       FROM
+	         pg_catalog.generate_series(0, pg_catalog.array_upper(pr.prattrs::pg_catalog.int2[], 1)) s,
+	         pg_catalog.pg_attribute
+	      WHERE attrelid = pr.prrelid AND attnum = prattrs[s])
+	  ELSE NULL END) prattrs FROM pg_catalog.pg_publication_rel pr
+2025-04-29 15:39:53.119 UTC [163] LOG:  statement: SELECT tableoid, oid, pnpubid, pnnspid FROM pg_catalog.pg_publication_namespace
+2025-04-29 15:39:53.120 UTC [163] LOG:  statement: SELECT s.tableoid, s.oid, s.subname,
+	 s.subowner,
+	 s.subconninfo, s.subslotname, s.subsynccommit,
+	 s.subpublications,
+	 s.subbinary,
+	 s.substream,
+	 s.subtwophasestate,
+	 s.subdisableonerr,
+	 s.subpasswordrequired,
+	 s.subrunasowner,
+	 s.suborigin
+	FROM pg_subscription s
+	WHERE s.subdbid = (SELECT oid FROM pg_database
+	                   WHERE datname = current_database())
+2025-04-29 15:39:53.121 UTC [163] LOG:  statement: WITH RECURSIVE w AS ( SELECT d1.objid, d2.refobjid, c2.relkind AS refrelkind FROM pg_depend d1 JOIN pg_class c1 ON c1.oid = d1.objid AND c1.relkind = 'm' JOIN pg_rewrite r1 ON r1.ev_class = d1.objid JOIN pg_depend d2 ON d2.classid = 'pg_rewrite'::regclass AND d2.objid = r1.oid AND d2.refobjid <> d1.objid JOIN pg_class c2 ON c2.oid = d2.refobjid AND c2.relkind IN ('m','v') WHERE d1.classid = 'pg_class'::regclass UNION SELECT w.objid, d3.refobjid, c3.relkind FROM w JOIN pg_rewrite r3 ON r3.ev_class = w.refobjid JOIN pg_depend d3 ON d3.classid = 'pg_rewrite'::regclass AND d3.objid = r3.oid AND d3.refobjid <> w.refobjid JOIN pg_class c3 ON c3.oid = d3.refobjid AND c3.relkind IN ('m','v') ) SELECT 'pg_class'::regclass::oid AS classid, objid, refobjid FROM w WHERE refrelkind = 'm'
+2025-04-29 15:39:53.122 UTC [163] LOG:  statement: SELECT oid, lomowner, lomacl, acldefault('L', lomowner) AS acldefault FROM pg_largeobject_metadata
+2025-04-29 15:39:53.123 UTC [163] LOG:  statement: SELECT classid, objid, refclassid, refobjid, deptype FROM pg_depend WHERE deptype != 'p' AND deptype != 'e'
+	UNION ALL
+	SELECT 'pg_opfamily'::regclass AS classid, amopfamily AS objid, refclassid, refobjid, deptype FROM pg_depend d, pg_amop o WHERE deptype NOT IN ('p', 'e', 'i') AND classid = 'pg_amop'::regclass AND objid = o.oid AND NOT (refclassid = 'pg_opfamily'::regclass AND amopfamily = refobjid)
+	UNION ALL
+	SELECT 'pg_opfamily'::regclass AS classid, amprocfamily AS objid, refclassid, refobjid, deptype FROM pg_depend d, pg_amproc p WHERE deptype NOT IN ('p', 'e', 'i') AND classid = 'pg_amproc'::regclass AND objid = p.oid AND NOT (refclassid = 'pg_opfamily'::regclass AND amprocfamily = refobjid)
+	ORDER BY 1,2
+2025-04-29 15:39:53.125 UTC [163] LOG:  statement: SELECT DISTINCT attrelid FROM pg_attribute WHERE attacl IS NOT NULL
+2025-04-29 15:39:53.126 UTC [163] LOG:  statement: SELECT objoid, classoid, objsubid, privtype, initprivs FROM pg_init_privs
+2025-04-29 15:39:53.127 UTC [163] LOG:  statement: SELECT description, classoid, objoid, objsubid FROM pg_catalog.pg_description ORDER BY classoid, objoid, objsubid
+2025-04-29 15:39:53.135 UTC [163] LOG:  statement: SELECT label, provider, classoid, objoid, objsubid FROM pg_catalog.pg_seclabel ORDER BY classoid, objoid, objsubid
+2025-04-29 15:39:53.138 UTC [163] LOG:  statement: SELECT pg_catalog.current_schemas(false)
+2025-04-29 15:39:53.138 UTC [163] LOG:  statement: PREPARE dumpEnumType(pg_catalog.oid) AS
+	SELECT oid, enumlabel FROM pg_catalog.pg_enum WHERE enumtypid = $1 ORDER BY enumsortorder
+2025-04-29 15:39:53.139 UTC [163] LOG:  statement: EXECUTE dumpEnumType('16386')
+2025-04-29 15:39:53.139 UTC [163] DETAIL:  prepare: PREPARE dumpEnumType(pg_catalog.oid) AS
+	SELECT oid, enumlabel FROM pg_catalog.pg_enum WHERE enumtypid = $1 ORDER BY enumsortorder
+2025-04-29 15:39:53.140 UTC [163] LOG:  statement: PREPARE getColumnACLs(pg_catalog.oid) AS
+	SELECT at.attname, at.attacl, '{}' AS acldefault, pip.privtype, pip.initprivs FROM pg_catalog.pg_attribute at LEFT JOIN pg_catalog.pg_init_privs pip ON (at.attrelid = pip.objoid AND pip.classoid = 'pg_catalog.pg_class'::pg_catalog.regclass AND at.attnum = pip.objsubid) WHERE at.attrelid = $1 AND NOT at.attisdropped AND (at.attacl IS NOT NULL OR pip.initprivs IS NOT NULL) ORDER BY at.attnum
+2025-04-29 15:39:53.140 UTC [163] LOG:  statement: EXECUTE getColumnACLs('6100')
+2025-04-29 15:39:53.140 UTC [163] DETAIL:  prepare: PREPARE getColumnACLs(pg_catalog.oid) AS
+	SELECT at.attname, at.attacl, '{}' AS acldefault, pip.privtype, pip.initprivs FROM pg_catalog.pg_attribute at LEFT JOIN pg_catalog.pg_init_privs pip ON (at.attrelid = pip.objoid AND pip.classoid = 'pg_catalog.pg_class'::pg_catalog.regclass AND at.attnum = pip.objsubid) WHERE at.attrelid = $1 AND NOT at.attisdropped AND (at.attacl IS NOT NULL OR pip.initprivs IS NOT NULL) ORDER BY at.attnum
+2025-04-29 15:39:53.141 UTC [163] LOG:  statement: SELECT format_type(seqtypid, NULL), seqstart, seqincrement, seqmax, seqmin, seqcache, seqcycle FROM pg_catalog.pg_sequence WHERE seqrelid = '16404'::oid
+2025-04-29 15:39:53.142 UTC [163] LOG:  statement: SELECT format_type(seqtypid, NULL), seqstart, seqincrement, seqmax, seqmin, seqcache, seqcycle FROM pg_catalog.pg_sequence WHERE seqrelid = '16393'::oid
+2025-04-29 15:39:53.142 UTC [163] LOG:  statement: SELECT last_value, is_called FROM public.currentbalance_id_seq
+2025-04-29 15:39:53.143 UTC [163] LOG:  statement: SELECT last_value, is_called FROM public.transactions_id_seq
+2025-04-29 15:39:53.143 UTC [163] LOG:  statement: COPY public.currentbalance (id, balance) TO stdout;
+2025-04-29 15:39:53.143 UTC [163] LOG:  statement: COPY public.transactions (id, date, "time", type, amount, name, ref, fee, remarks, created_at, updated_at) TO stdout;
+2025-04-29 15:40:04.738 UTC [172] LOG:  execute <unnamed>: SELECT * FROM Transactions WHERE date = $1 ORDER BY id DESC
+2025-04-29 15:40:04.738 UTC [172] DETAIL:  parameters: $1 = '2025-04-29'
+2025-04-29 15:40:04.776 UTC [172] LOG:  statement: SELECT * FROM Transactions ORDER BY id DESC LIMIT 1
+2025-04-29 15:40:07.022 UTC [172] LOG:  execute <unnamed>: SELECT * FROM Transactions WHERE id = $1
+2025-04-29 15:40:07.022 UTC [172] DETAIL:  parameters: $1 = '3'
+2025-04-29 15:40:07.024 UTC [172] LOG:  execute <unnamed>: UPDATE CurrentBalance SET balance = balance + $1 WHERE id = 1
+2025-04-29 15:40:07.024 UTC [172] DETAIL:  parameters: $1 = '20'
+2025-04-29 15:40:07.033 UTC [172] LOG:  execute <unnamed>: DELETE FROM Transactions WHERE id = $1
+2025-04-29 15:40:07.033 UTC [172] DETAIL:  parameters: $1 = '3'
+2025-04-29 15:40:08.741 UTC [172] LOG:  execute <unnamed>: SELECT * FROM Transactions WHERE date = $1 ORDER BY id DESC
+2025-04-29 15:40:08.741 UTC [172] DETAIL:  parameters: $1 = '2025-04-29'
+2025-04-29 15:40:08.748 UTC [172] LOG:  statement: SELECT balance FROM CurrentBalance WHERE id = 1
+2025-04-29 15:40:08.763 UTC [172] LOG:  statement: SELECT * FROM Transactions ORDER BY id DESC LIMIT 1
+2025-04-29 15:40:10.610 UTC [172] LOG:  execute <unnamed>: SELECT * FROM Transactions WHERE id = $1
+2025-04-29 15:40:10.610 UTC [172] DETAIL:  parameters: $1 = '2'
+2025-04-29 15:40:10.612 UTC [172] LOG:  execute <unnamed>: UPDATE CurrentBalance SET balance = balance + $1 WHERE id = 1
+2025-04-29 15:40:10.612 UTC [172] DETAIL:  parameters: $1 = '-500'
+2025-04-29 15:40:10.622 UTC [172] LOG:  execute <unnamed>: DELETE FROM Transactions WHERE id = $1
+2025-04-29 15:40:10.622 UTC [172] DETAIL:  parameters: $1 = '2'
+2025-04-29 15:40:11.273 UTC [172] LOG:  execute <unnamed>: SELECT * FROM Transactions WHERE date = $1 ORDER BY id DESC
+2025-04-29 15:40:11.273 UTC [172] DETAIL:  parameters: $1 = '2025-04-29'
+2025-04-29 15:40:11.289 UTC [172] LOG:  statement: SELECT * FROM Transactions ORDER BY id DESC LIMIT 1
+2025-04-29 15:40:11.298 UTC [174] LOG:  statement: SELECT balance FROM CurrentBalance WHERE id = 1
+2025-04-29 15:40:12.424 UTC [174] LOG:  execute <unnamed>: SELECT * FROM Transactions WHERE id = $1
+2025-04-29 15:40:12.424 UTC [174] DETAIL:  parameters: $1 = '1'
+2025-04-29 15:40:12.425 UTC [174] LOG:  execute <unnamed>: UPDATE CurrentBalance SET balance = balance + $1 WHERE id = 1
+2025-04-29 15:40:12.425 UTC [174] DETAIL:  parameters: $1 = '2000'
+2025-04-29 15:40:12.434 UTC [174] LOG:  execute <unnamed>: DELETE FROM Transactions WHERE id = $1
+2025-04-29 15:40:12.434 UTC [174] DETAIL:  parameters: $1 = '1'
+2025-04-29 15:40:12.885 UTC [172] LOG:  statement: SELECT balance FROM CurrentBalance WHERE id = 1
+2025-04-29 15:40:12.885 UTC [174] LOG:  execute <unnamed>: SELECT * FROM Transactions WHERE date = $1 ORDER BY id DESC
+2025-04-29 15:40:12.885 UTC [174] DETAIL:  parameters: $1 = '2025-04-29'
+2025-04-29 15:40:12.900 UTC [174] LOG:  statement: SELECT * FROM Transactions ORDER BY id DESC LIMIT 1
+2025-04-29 15:40:36.924 UTC [200] LOG:  statement: DROP SCHEMA public CASCADE
+2025-04-29 15:40:36.936 UTC [200] LOG:  statement: CREATE SCHEMA public
+2025-04-29 15:40:37.026 UTC [201] LOG:  statement: SET statement_timeout = 0;
+2025-04-29 15:40:37.027 UTC [201] LOG:  statement: SET lock_timeout = 0;
+2025-04-29 15:40:37.027 UTC [201] LOG:  statement: SET idle_in_transaction_session_timeout = 0;
+2025-04-29 15:40:37.027 UTC [201] LOG:  statement: SET client_encoding = 'UTF8';
+2025-04-29 15:40:37.028 UTC [201] LOG:  statement: SET standard_conforming_strings = on;
+2025-04-29 15:40:37.028 UTC [201] LOG:  statement: SELECT pg_catalog.set_config('search_path', '', false);
+2025-04-29 15:40:37.030 UTC [201] LOG:  statement: SET check_function_bodies = false;
+2025-04-29 15:40:37.030 UTC [201] LOG:  statement: SET xmloption = content;
+2025-04-29 15:40:37.030 UTC [201] LOG:  statement: SET client_min_messages = warning;
+2025-04-29 15:40:37.030 UTC [201] LOG:  statement: SET row_security = off;
+2025-04-29 15:40:37.031 UTC [201] LOG:  statement: CREATE TYPE public.transaction_type AS ENUM (
+	    'Cash In',
+	    'Cash Out',
+	    'Load'
+	);
+2025-04-29 15:40:37.034 UTC [201] LOG:  statement: ALTER TYPE public.transaction_type OWNER TO kfa;
+2025-04-29 15:40:37.035 UTC [201] LOG:  statement: SET default_tablespace = '';
+2025-04-29 15:40:37.035 UTC [201] LOG:  statement: SET default_table_access_method = heap;
+2025-04-29 15:40:37.037 UTC [201] LOG:  statement: CREATE TABLE public.currentbalance (
+	    id integer NOT NULL,
+	    balance numeric DEFAULT 0.00 NOT NULL
+	);
+2025-04-29 15:40:37.046 UTC [201] LOG:  statement: ALTER TABLE public.currentbalance OWNER TO kfa;
+2025-04-29 15:40:37.049 UTC [201] LOG:  statement: CREATE SEQUENCE public.currentbalance_id_seq
+	    AS integer
+	    START WITH 1
+	    INCREMENT BY 1
+	    NO MINVALUE
+	    NO MAXVALUE
+	    CACHE 1;
+2025-04-29 15:40:37.053 UTC [201] LOG:  statement: ALTER SEQUENCE public.currentbalance_id_seq OWNER TO kfa;
+2025-04-29 15:40:37.055 UTC [201] LOG:  statement: ALTER SEQUENCE public.currentbalance_id_seq OWNED BY public.currentbalance.id;
+2025-04-29 15:40:37.058 UTC [201] LOG:  statement: CREATE TABLE public.transactions (
+	    id integer NOT NULL,
+	    date text NOT NULL,
+	    "time" text NOT NULL,
+	    type public.transaction_type NOT NULL,
+	    amount text NOT NULL,
+	    name text NOT NULL,
+	    ref text NOT NULL,
+	    fee text NOT NULL,
+	    remarks text NOT NULL,
+	    created_at timestamp without time zone DEFAULT CURRENT_TIMESTAMP,
+	    updated_at timestamp without time zone DEFAULT CURRENT_TIMESTAMP
+	);
+2025-04-29 15:40:37.066 UTC [201] LOG:  statement: ALTER TABLE public.transactions OWNER TO kfa;
+2025-04-29 15:40:37.069 UTC [201] LOG:  statement: CREATE SEQUENCE public.transactions_id_seq
+	    AS integer
+	    START WITH 1
+	    INCREMENT BY 1
+	    NO MINVALUE
+	    NO MAXVALUE
+	    CACHE 1;
+2025-04-29 15:40:37.072 UTC [201] LOG:  statement: ALTER SEQUENCE public.transactions_id_seq OWNER TO kfa;
+2025-04-29 15:40:37.075 UTC [201] LOG:  statement: ALTER SEQUENCE public.transactions_id_seq OWNED BY public.transactions.id;
+2025-04-29 15:40:37.077 UTC [201] LOG:  statement: ALTER TABLE ONLY public.currentbalance ALTER COLUMN id SET DEFAULT nextval('public.currentbalance_id_seq'::regclass);
+2025-04-29 15:40:37.079 UTC [201] LOG:  statement: ALTER TABLE ONLY public.transactions ALTER COLUMN id SET DEFAULT nextval('public.transactions_id_seq'::regclass);
+2025-04-29 15:40:37.082 UTC [201] LOG:  statement: COPY public.currentbalance (id, balance) FROM stdin;
+2025-04-29 15:40:37.085 UTC [201] LOG:  statement: COPY public.transactions (id, date, "time", type, amount, name, ref, fee, remarks, created_at, updated_at) FROM stdin;
+2025-04-29 15:40:37.087 UTC [201] LOG:  statement: SELECT pg_catalog.setval('public.currentbalance_id_seq', 1, true);
+2025-04-29 15:40:37.089 UTC [201] LOG:  statement: SELECT pg_catalog.setval('public.transactions_id_seq', 3, true);
+2025-04-29 15:40:37.092 UTC [201] LOG:  statement: ALTER TABLE ONLY public.currentbalance
+	    ADD CONSTRAINT currentbalance_pkey PRIMARY KEY (id);
+2025-04-29 15:40:37.100 UTC [201] LOG:  statement: ALTER TABLE ONLY public.transactions
+	    ADD CONSTRAINT transactions_pkey PRIMARY KEY (id);
+2025-04-29 15:40:37.110 UTC [200] LOG:  statement: 
+	      DO $$ 
+	      BEGIN
+	        IF EXISTS (SELECT 1 FROM pg_type WHERE typname = 'transaction_type') THEN
+	          DROP TYPE transaction_type CASCADE;
+	        END IF;
+	        CREATE TYPE transaction_type AS ENUM ('Cash In', 'Cash Out', 'Load');
+	      END $$;
+	    
+2025-04-29 15:40:37.119 UTC [200] LOG:  statement: 
+	      CREATE TABLE IF NOT EXISTS Transactions (
+	        id SERIAL PRIMARY KEY,
+	        date TEXT NOT NULL,
+	        time TEXT NOT NULL,
+	        type transaction_type NOT NULL,
+	        amount TEXT NOT NULL,
+	        name TEXT NOT NULL,
+	        ref TEXT NOT NULL,
+	        fee TEXT NOT NULL,
+	        remarks TEXT NOT NULL,
+	        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+	        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+	      );
+	    
+2025-04-29 15:40:37.120 UTC [200] LOG:  statement: 
+	      DO $$ 
+	      BEGIN
+	        IF NOT EXISTS (SELECT 1 FROM information_schema.columns 
+	                       WHERE table_name = 'transactions' AND column_name = 'created_at') THEN
+	          ALTER TABLE Transactions ADD COLUMN created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP;
+	        END IF;
+	        IF NOT EXISTS (SELECT 1 FROM information_schema.columns 
+	                       WHERE table_name = 'transactions' AND column_name = 'updated_at') THEN
+	          ALTER TABLE Transactions ADD COLUMN updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP;
+	        END IF;
+	      END $$;
+	    
+2025-04-29 15:40:37.132 UTC [200] LOG:  statement: 
+	      CREATE TABLE IF NOT EXISTS CurrentBalance (
+	        id SERIAL PRIMARY KEY,
+	        balance DECIMAL NOT NULL DEFAULT 0.00
+	      );
+	    
+2025-04-29 15:40:37.133 UTC [200] LOG:  statement: SELECT * FROM CurrentBalance
+2025-04-29 15:40:38.459 UTC [200] LOG:  statement: 
+	      SELECT 
+	        TO_CHAR(TO_DATE(date, 'YYYY-MM-DD'), 'YYYY-MM') AS month,
+	        COUNT(*) AS total_transactions,
+	        SUM(CAST(amount AS DECIMAL)) AS total_amount,
+	        SUM(CAST(fee AS DECIMAL)) AS total_fee
+	      FROM Transactions
+	      GROUP BY TO_CHAR(TO_DATE(date, 'YYYY-MM-DD'), 'YYYY-MM')
+	      ORDER BY month DESC
+	    
+2025-04-29 15:40:38.475 UTC [200] LOG:  execute <unnamed>: SELECT * FROM Transactions WHERE date = $1 ORDER BY id DESC
+2025-04-29 15:40:38.475 UTC [200] DETAIL:  parameters: $1 = '2025-04-29'
+2025-04-29 15:40:38.479 UTC [200] LOG:  statement: SELECT * FROM Transactions ORDER BY id DESC LIMIT 1
+2025-04-29 15:40:38.489 UTC [203] LOG:  statement: SELECT balance FROM CurrentBalance WHERE id = 1
+2025-04-29 15:40:38.490 UTC [202] LOG:  execute <unnamed>: 
+	      SELECT SUM(CAST(fee AS DECIMAL)) AS total_fee
+	      FROM Transactions
+	      WHERE TO_CHAR(TO_DATE(date, 'YYYY-MM-DD'), 'YYYY-MM') = $1
+	    
+2025-04-29 15:40:38.490 UTC [202] DETAIL:  parameters: $1 = '2025-04'
+2025-04-29 15:40:38.491 UTC [202] LOG:  execute <unnamed>: 
+	      SELECT SUM(CAST(fee AS DECIMAL)) AS total_fee
+	      FROM Transactions
+	      WHERE TO_CHAR(TO_DATE(date, 'YYYY-MM-DD'), 'YYYY-MM') = $1
+	    
+2025-04-29 15:40:38.491 UTC [202] DETAIL:  parameters: $1 = '2025-03'
+2025-04-29 15:40:38.495 UTC [202] LOG:  statement: SELECT * FROM Transactions ORDER BY id DESC LIMIT 1
+2025-04-29 15:40:40.072 UTC [202] LOG:  statement: 
+	      SELECT 
+	        TO_CHAR(TO_DATE(date, 'YYYY-MM-DD'), 'YYYY-MM') AS month,
+	        COUNT(*) AS total_transactions,
+	        SUM(CAST(amount AS DECIMAL)) AS total_amount,
+	        SUM(CAST(fee AS DECIMAL)) AS total_fee
+	      FROM Transactions
+	      GROUP BY TO_CHAR(TO_DATE(date, 'YYYY-MM-DD'), 'YYYY-MM')
+	      ORDER BY month DESC
+	    
+2025-04-29 15:40:40.074 UTC [203] LOG:  execute <unnamed>: 
+	      SELECT SUM(CAST(fee AS DECIMAL)) AS total_fee
+	      FROM Transactions
+	      WHERE TO_CHAR(TO_DATE(date, 'YYYY-MM-DD'), 'YYYY-MM') = $1
+	    
+2025-04-29 15:40:40.074 UTC [203] DETAIL:  parameters: $1 = '2025-04'
+2025-04-29 15:40:40.077 UTC [203] LOG:  execute <unnamed>: 
+	      SELECT SUM(CAST(fee AS DECIMAL)) AS total_fee
+	      FROM Transactions
+	      WHERE TO_CHAR(TO_DATE(date, 'YYYY-MM-DD'), 'YYYY-MM') = $1
+	    
+2025-04-29 15:40:40.077 UTC [203] DETAIL:  parameters: $1 = '2025-03'
+2025-04-29 15:40:45.375 UTC [203] LOG:  execute <unnamed>: SELECT * FROM Transactions WHERE date = $1 ORDER BY id DESC
+2025-04-29 15:40:45.375 UTC [203] DETAIL:  parameters: $1 = '2025-04-29'
+2025-04-29 15:40:45.399 UTC [203] LOG:  statement: SELECT * FROM Transactions ORDER BY id DESC LIMIT 1
+2025-04-29 15:41:50.948 UTC [264] LOG:  statement: SELECT
+	  d.datname as "Name",
+	  pg_catalog.pg_get_userbyid(d.datdba) as "Owner",
+	  pg_catalog.pg_encoding_to_char(d.encoding) as "Encoding",
+	  CASE d.datlocprovider WHEN 'c' THEN 'libc' WHEN 'i' THEN 'icu' END AS "Locale Provider",
+	  d.datcollate as "Collate",
+	  d.datctype as "Ctype",
+	  d.daticulocale as "ICU Locale",
+	  d.daticurules as "ICU Rules",
+	  pg_catalog.array_to_string(d.datacl, E'\n') AS "Access privileges"
+	FROM pg_catalog.pg_database d
+	ORDER BY 1;
+2025-04-29 15:41:52.873 UTC [264] LOG:  statement: SELECT n.nspname as "Schema",
+	  c.relname as "Name",
+	  CASE c.relkind WHEN 'r' THEN 'table' WHEN 'v' THEN 'view' WHEN 'm' THEN 'materialized view' WHEN 'i' THEN 'index' WHEN 'S' THEN 'sequence' WHEN 't' THEN 'TOAST table' WHEN 'f' THEN 'foreign table' WHEN 'p' THEN 'partitioned table' WHEN 'I' THEN 'partitioned index' END as "Type",
+	  pg_catalog.pg_get_userbyid(c.relowner) as "Owner"
+	FROM pg_catalog.pg_class c
+	     LEFT JOIN pg_catalog.pg_namespace n ON n.oid = c.relnamespace
+	     LEFT JOIN pg_catalog.pg_am am ON am.oid = c.relam
+	WHERE c.relkind IN ('r','p','')
+	      AND n.nspname <> 'pg_catalog'
+	      AND n.nspname !~ '^pg_toast'
+	      AND n.nspname <> 'information_schema'
+	  AND pg_catalog.pg_table_is_visible(c.oid)
+	ORDER BY 1,2;
+2025-04-29 15:41:58.773 UTC [264] LOG:  statement: SELECT c.relname, NULL::pg_catalog.text FROM pg_catalog.pg_class c WHERE c.relkind IN ('r', 'S', 'v', 'm', 'f', 'p') AND (c.relname) LIKE 'c%' AND pg_catalog.pg_table_is_visible(c.oid) AND c.relnamespace <> (SELECT oid FROM pg_catalog.pg_namespace WHERE nspname = 'pg_catalog')
+	UNION ALL
+	SELECT NULL::pg_catalog.text, n.nspname FROM pg_catalog.pg_namespace n WHERE n.nspname LIKE 'c%' AND n.nspname NOT LIKE E'pg\\_%'
+	LIMIT 1000
+2025-04-29 15:41:59.327 UTC [264] LOG:  statement: select * from currentbalance;
+2025-04-29 15:42:05.441 UTC [264] LOG:  statement: SELECT c.relname, NULL::pg_catalog.text FROM pg_catalog.pg_class c WHERE c.relkind IN ('r', 'S', 'v', 'm', 'f', 'p') AND (c.relname) LIKE 'tr%' AND pg_catalog.pg_table_is_visible(c.oid) AND c.relnamespace <> (SELECT oid FROM pg_catalog.pg_namespace WHERE nspname = 'pg_catalog')
+	UNION ALL
+	SELECT NULL::pg_catalog.text, n.nspname FROM pg_catalog.pg_namespace n WHERE n.nspname LIKE 'tr%' AND n.nspname NOT LIKE E'pg\\_%'
+	LIMIT 1000
+2025-04-29 15:42:06.968 UTC [264] LOG:  statement: select * from transactions;
+2025-04-29 15:42:12.226 UTC [282] LOG:  execute <unnamed>: SELECT * FROM Transactions WHERE id = $1
+2025-04-29 15:42:12.226 UTC [282] DETAIL:  parameters: $1 = '3'
+2025-04-29 15:42:12.227 UTC [282] LOG:  execute <unnamed>: DELETE FROM Transactions WHERE id = $1
+2025-04-29 15:42:12.227 UTC [282] DETAIL:  parameters: $1 = '3'
+2025-04-29 15:42:14.838 UTC [282] LOG:  execute <unnamed>: SELECT * FROM Transactions WHERE date = $1 ORDER BY id DESC
+2025-04-29 15:42:14.838 UTC [282] DETAIL:  parameters: $1 = '2025-04-29'
+2025-04-29 15:42:14.844 UTC [282] LOG:  statement: SELECT balance FROM CurrentBalance WHERE id = 1
+2025-04-29 15:42:14.856 UTC [282] LOG:  statement: SELECT * FROM Transactions ORDER BY id DESC LIMIT 1
+2025-04-29 15:42:20.398 UTC [282] LOG:  execute <unnamed>: SELECT * FROM Transactions WHERE id = $1
+2025-04-29 15:42:20.398 UTC [282] DETAIL:  parameters: $1 = '2'
+2025-04-29 15:42:20.399 UTC [282] LOG:  execute <unnamed>: DELETE FROM Transactions WHERE id = $1
+2025-04-29 15:42:20.399 UTC [282] DETAIL:  parameters: $1 = '2'
+2025-04-29 15:42:21.953 UTC [282] LOG:  execute <unnamed>: SELECT * FROM Transactions WHERE date = $1 ORDER BY id DESC
+2025-04-29 15:42:21.953 UTC [282] DETAIL:  parameters: $1 = '2025-04-29'
+2025-04-29 15:42:21.959 UTC [282] LOG:  statement: SELECT balance FROM CurrentBalance WHERE id = 1
+2025-04-29 15:42:21.969 UTC [282] LOG:  statement: SELECT * FROM Transactions ORDER BY id DESC LIMIT 1
+2025-04-29 15:42:24.254 UTC [282] LOG:  execute <unnamed>: SELECT * FROM Transactions WHERE id = $1
+2025-04-29 15:42:24.254 UTC [282] DETAIL:  parameters: $1 = '1'
+2025-04-29 15:42:24.255 UTC [282] LOG:  execute <unnamed>: DELETE FROM Transactions WHERE id = $1
+2025-04-29 15:42:24.255 UTC [282] DETAIL:  parameters: $1 = '1'
+2025-04-29 15:42:25.248 UTC [282] LOG:  execute <unnamed>: SELECT * FROM Transactions WHERE date = $1 ORDER BY id DESC
+2025-04-29 15:42:25.248 UTC [282] DETAIL:  parameters: $1 = '2025-04-29'
+2025-04-29 15:42:25.261 UTC [298] LOG:  statement: SELECT balance FROM CurrentBalance WHERE id = 1
+2025-04-29 15:42:25.269 UTC [298] LOG:  statement: SELECT * FROM Transactions ORDER BY id DESC LIMIT 1
+2025-04-29 15:42:27.267 UTC [264] LOG:  statement: select * from transactions;
+2025-04-29 15:42:29.338 UTC [264] LOG:  statement: select * from currentbalance;
+2025-04-29 15:43:09.233 UTC [335] LOG:  statement: SET statement_timeout = 0;
+2025-04-29 15:43:09.233 UTC [335] LOG:  statement: SET lock_timeout = 0;
+2025-04-29 15:43:09.234 UTC [335] LOG:  statement: SET idle_in_transaction_session_timeout = 0;
+2025-04-29 15:43:09.234 UTC [335] LOG:  statement: SET client_encoding = 'UTF8';
+2025-04-29 15:43:09.234 UTC [335] LOG:  statement: SET standard_conforming_strings = on;
+2025-04-29 15:43:09.235 UTC [335] LOG:  statement: SELECT pg_catalog.set_config('search_path', '', false);
+2025-04-29 15:43:09.235 UTC [335] LOG:  statement: SET check_function_bodies = false;
+2025-04-29 15:43:09.236 UTC [335] LOG:  statement: SET xmloption = content;
+2025-04-29 15:43:09.236 UTC [335] LOG:  statement: SET client_min_messages = warning;
+2025-04-29 15:43:09.237 UTC [335] LOG:  statement: SET row_security = off;
+2025-04-29 15:43:09.237 UTC [335] LOG:  statement: CREATE TYPE public.transaction_type AS ENUM (
+	    'Cash In',
+	    'Cash Out',
+	    'Load'
+	);
+2025-04-29 15:43:09.238 UTC [335] ERROR:  type "transaction_type" already exists
+2025-04-29 15:43:09.238 UTC [335] STATEMENT:  CREATE TYPE public.transaction_type AS ENUM (
+	    'Cash In',
+	    'Cash Out',
+	    'Load'
+	);
+2025-04-29 15:43:09.239 UTC [335] LOG:  statement: ALTER TYPE public.transaction_type OWNER TO kfa;
+2025-04-29 15:43:09.239 UTC [335] LOG:  statement: SET default_tablespace = '';
+2025-04-29 15:43:09.240 UTC [335] LOG:  statement: SET default_table_access_method = heap;
+2025-04-29 15:43:09.240 UTC [335] LOG:  statement: CREATE TABLE public.currentbalance (
+	    id integer NOT NULL,
+	    balance numeric DEFAULT 0.00 NOT NULL
+	);
+2025-04-29 15:43:09.241 UTC [335] ERROR:  relation "currentbalance" already exists
+2025-04-29 15:43:09.241 UTC [335] STATEMENT:  CREATE TABLE public.currentbalance (
+	    id integer NOT NULL,
+	    balance numeric DEFAULT 0.00 NOT NULL
+	);
+2025-04-29 15:43:09.242 UTC [335] LOG:  statement: ALTER TABLE public.currentbalance OWNER TO kfa;
+2025-04-29 15:43:09.244 UTC [335] LOG:  statement: CREATE SEQUENCE public.currentbalance_id_seq
+	    AS integer
+	    START WITH 1
+	    INCREMENT BY 1
+	    NO MINVALUE
+	    NO MAXVALUE
+	    CACHE 1;
+2025-04-29 15:43:09.244 UTC [335] ERROR:  relation "currentbalance_id_seq" already exists
+2025-04-29 15:43:09.244 UTC [335] STATEMENT:  CREATE SEQUENCE public.currentbalance_id_seq
+	    AS integer
+	    START WITH 1
+	    INCREMENT BY 1
+	    NO MINVALUE
+	    NO MAXVALUE
+	    CACHE 1;
+2025-04-29 15:43:09.244 UTC [335] LOG:  statement: ALTER SEQUENCE public.currentbalance_id_seq OWNER TO kfa;
+2025-04-29 15:43:09.246 UTC [335] LOG:  statement: ALTER SEQUENCE public.currentbalance_id_seq OWNED BY public.currentbalance.id;
+2025-04-29 15:43:09.249 UTC [335] LOG:  statement: CREATE TABLE public.transactions (
+	    id integer NOT NULL,
+	    date text NOT NULL,
+	    "time" text NOT NULL,
+	    type public.transaction_type NOT NULL,
+	    amount text NOT NULL,
+	    name text NOT NULL,
+	    ref text NOT NULL,
+	    fee text NOT NULL,
+	    remarks text NOT NULL,
+	    created_at timestamp without time zone DEFAULT CURRENT_TIMESTAMP,
+	    updated_at timestamp without time zone DEFAULT CURRENT_TIMESTAMP
+	);
+2025-04-29 15:43:09.249 UTC [335] ERROR:  relation "transactions" already exists
+2025-04-29 15:43:09.249 UTC [335] STATEMENT:  CREATE TABLE public.transactions (
+	    id integer NOT NULL,
+	    date text NOT NULL,
+	    "time" text NOT NULL,
+	    type public.transaction_type NOT NULL,
+	    amount text NOT NULL,
+	    name text NOT NULL,
+	    ref text NOT NULL,
+	    fee text NOT NULL,
+	    remarks text NOT NULL,
+	    created_at timestamp without time zone DEFAULT CURRENT_TIMESTAMP,
+	    updated_at timestamp without time zone DEFAULT CURRENT_TIMESTAMP
+	);
+2025-04-29 15:43:09.250 UTC [335] LOG:  statement: ALTER TABLE public.transactions OWNER TO kfa;
+2025-04-29 15:43:09.252 UTC [335] LOG:  statement: CREATE SEQUENCE public.transactions_id_seq
+	    AS integer
+	    START WITH 1
+	    INCREMENT BY 1
+	    NO MINVALUE
+	    NO MAXVALUE
+	    CACHE 1;
+2025-04-29 15:43:09.252 UTC [335] ERROR:  relation "transactions_id_seq" already exists
+2025-04-29 15:43:09.252 UTC [335] STATEMENT:  CREATE SEQUENCE public.transactions_id_seq
+	    AS integer
+	    START WITH 1
+	    INCREMENT BY 1
+	    NO MINVALUE
+	    NO MAXVALUE
+	    CACHE 1;
+2025-04-29 15:43:09.252 UTC [335] LOG:  statement: ALTER SEQUENCE public.transactions_id_seq OWNER TO kfa;
+2025-04-29 15:43:09.254 UTC [335] LOG:  statement: ALTER SEQUENCE public.transactions_id_seq OWNED BY public.transactions.id;
+2025-04-29 15:43:09.257 UTC [335] LOG:  statement: ALTER TABLE ONLY public.currentbalance ALTER COLUMN id SET DEFAULT nextval('public.currentbalance_id_seq'::regclass);
+2025-04-29 15:43:09.260 UTC [335] LOG:  statement: ALTER TABLE ONLY public.transactions ALTER COLUMN id SET DEFAULT nextval('public.transactions_id_seq'::regclass);
+2025-04-29 15:43:09.263 UTC [335] LOG:  statement: COPY public.currentbalance (id, balance) FROM stdin;
+2025-04-29 15:43:09.263 UTC [335] ERROR:  duplicate key value violates unique constraint "currentbalance_pkey"
+2025-04-29 15:43:09.263 UTC [335] DETAIL:  Key (id)=(1) already exists.
+2025-04-29 15:43:09.263 UTC [335] CONTEXT:  COPY currentbalance, line 1
+2025-04-29 15:43:09.263 UTC [335] STATEMENT:  COPY public.currentbalance (id, balance) FROM stdin;
+2025-04-29 15:43:09.264 UTC [335] LOG:  statement: COPY public.transactions (id, date, "time", type, amount, name, ref, fee, remarks, created_at, updated_at) FROM stdin;
+2025-04-29 15:43:09.264 UTC [335] ERROR:  column "type" of relation "transactions" does not exist
+2025-04-29 15:43:09.264 UTC [335] STATEMENT:  COPY public.transactions (id, date, "time", type, amount, name, ref, fee, remarks, created_at, updated_at) FROM stdin;
+2025-04-29 15:43:09.265 UTC [335] ERROR:  syntax error at or near "1" at character 1
+2025-04-29 15:43:09.265 UTC [335] STATEMENT:  1	2025-04-29	11:38	Cash In	2000	KEV	12322	40	SENT	2025-04-29 15:38:52.792726	2025-04-29 15:38:52.792726
+	2	2025-04-29	11:38	Cash Out	500	KFA	12345	10	CLAIMED	2025-04-29 15:39:05.156333	2025-04-29 15:39:05.156333
+	3	2025-04-29	11:39	Load	20	AN20	44121	5	LOAD	2025-04-29 15:39:21.409391	2025-04-29 15:39:21.409391
+	--
+	-- Name: currentbalance_id_seq; Type: SEQUENCE SET; Schema: public; Owner: kfa
+	--
+	SELECT pg_catalog.setval('public.currentbalance_id_seq', 1, true);
+2025-04-29 15:43:09.265 UTC [335] LOG:  statement: SELECT pg_catalog.setval('public.transactions_id_seq', 3, true);
+2025-04-29 15:43:09.267 UTC [335] LOG:  statement: ALTER TABLE ONLY public.currentbalance
+	    ADD CONSTRAINT currentbalance_pkey PRIMARY KEY (id);
+2025-04-29 15:43:09.268 UTC [335] ERROR:  multiple primary keys for table "currentbalance" are not allowed
+2025-04-29 15:43:09.268 UTC [335] STATEMENT:  ALTER TABLE ONLY public.currentbalance
+	    ADD CONSTRAINT currentbalance_pkey PRIMARY KEY (id);
+2025-04-29 15:43:09.268 UTC [335] LOG:  statement: ALTER TABLE ONLY public.transactions
+	    ADD CONSTRAINT transactions_pkey PRIMARY KEY (id);
+2025-04-29 15:43:09.268 UTC [335] ERROR:  multiple primary keys for table "transactions" are not allowed
+2025-04-29 15:43:09.268 UTC [335] STATEMENT:  ALTER TABLE ONLY public.transactions
+	    ADD CONSTRAINT transactions_pkey PRIMARY KEY (id);
+2025-04-29 15:43:18.344 UTC [64] LOG:  checkpoint starting: time
+2025-04-29 15:43:26.043 UTC [345] LOG:  statement: select * from transactions;
+2025-04-29 15:43:27.666 UTC [354] LOG:  statement: SELECT balance FROM CurrentBalance WHERE id = 1
+2025-04-29 15:43:27.668 UTC [355] LOG:  execute <unnamed>: SELECT * FROM Transactions WHERE date = $1 ORDER BY id DESC
+2025-04-29 15:43:27.668 UTC [355] DETAIL:  parameters: $1 = '2025-04-29'
+2025-04-29 15:43:27.669 UTC [356] LOG:  statement: SELECT * FROM Transactions ORDER BY id DESC LIMIT 1
+2025-04-29 15:43:27.737 UTC [356] LOG:  statement: SELECT * FROM Transactions ORDER BY id DESC LIMIT 1
+2025-04-29 15:43:30.380 UTC [356] LOG:  execute <unnamed>: SELECT * FROM Transactions WHERE date = $1 ORDER BY id DESC
+2025-04-29 15:43:30.380 UTC [356] DETAIL:  parameters: $1 = '2025-04-29'
+2025-04-29 15:43:30.393 UTC [356] LOG:  statement: SELECT * FROM Transactions ORDER BY id DESC LIMIT 1
+2025-04-29 15:43:30.923 UTC [64] LOG:  checkpoint complete: wrote 127 buffers (0.8%); 0 WAL file(s) added, 0 removed, 0 recycled; write=12.478 s, sync=0.068 s, total=12.580 s; sync files=80, longest=0.012 s, average=0.001 s; distance=585 kB, estimate=585 kB; lsn=0/19A4668, redo lsn=0/19A45F8
+2025-04-29 15:44:12.573 UTC [392] LOG:  statement: DROP SCHEMA public CASCADE
+2025-04-29 15:44:12.586 UTC [392] LOG:  statement: CREATE SCHEMA public
+2025-04-29 15:44:12.650 UTC [393] LOG:  statement: SET statement_timeout = 0;
+2025-04-29 15:44:12.651 UTC [393] LOG:  statement: SET lock_timeout = 0;
+2025-04-29 15:44:12.651 UTC [393] LOG:  statement: SET idle_in_transaction_session_timeout = 0;
+2025-04-29 15:44:12.651 UTC [393] LOG:  statement: SET client_encoding = 'UTF8';
+2025-04-29 15:44:12.652 UTC [393] LOG:  statement: SET standard_conforming_strings = on;
+2025-04-29 15:44:12.652 UTC [393] LOG:  statement: SELECT pg_catalog.set_config('search_path', '', false);
+2025-04-29 15:44:12.653 UTC [393] LOG:  statement: SET check_function_bodies = false;
+2025-04-29 15:44:12.654 UTC [393] LOG:  statement: SET xmloption = content;
+2025-04-29 15:44:12.654 UTC [393] LOG:  statement: SET client_min_messages = warning;
+2025-04-29 15:44:12.655 UTC [393] LOG:  statement: SET row_security = off;
+2025-04-29 15:44:12.655 UTC [393] LOG:  statement: CREATE TYPE public.transaction_type AS ENUM (
+	    'Cash In',
+	    'Cash Out',
+	    'Load'
+	);
+2025-04-29 15:44:12.659 UTC [393] LOG:  statement: ALTER TYPE public.transaction_type OWNER TO kfa;
+2025-04-29 15:44:12.660 UTC [393] LOG:  statement: SET default_tablespace = '';
+2025-04-29 15:44:12.660 UTC [393] LOG:  statement: SET default_table_access_method = heap;
+2025-04-29 15:44:12.660 UTC [393] LOG:  statement: CREATE TABLE public.currentbalance (
+	    id integer NOT NULL,
+	    balance numeric DEFAULT 0.00 NOT NULL
+	);
+2025-04-29 15:44:12.669 UTC [393] LOG:  statement: ALTER TABLE public.currentbalance OWNER TO kfa;
+2025-04-29 15:44:12.672 UTC [393] LOG:  statement: CREATE SEQUENCE public.currentbalance_id_seq
+	    AS integer
+	    START WITH 1
+	    INCREMENT BY 1
+	    NO MINVALUE
+	    NO MAXVALUE
+	    CACHE 1;
+2025-04-29 15:44:12.675 UTC [393] LOG:  statement: ALTER SEQUENCE public.currentbalance_id_seq OWNER TO kfa;
+2025-04-29 15:44:12.677 UTC [393] LOG:  statement: ALTER SEQUENCE public.currentbalance_id_seq OWNED BY public.currentbalance.id;
+2025-04-29 15:44:12.680 UTC [393] LOG:  statement: CREATE TABLE public.transactions (
+	    id integer NOT NULL,
+	    date text NOT NULL,
+	    "time" text NOT NULL,
+	    type public.transaction_type NOT NULL,
+	    amount text NOT NULL,
+	    name text NOT NULL,
+	    ref text NOT NULL,
+	    fee text NOT NULL,
+	    remarks text NOT NULL,
+	    created_at timestamp without time zone DEFAULT CURRENT_TIMESTAMP,
+	    updated_at timestamp without time zone DEFAULT CURRENT_TIMESTAMP
+	);
+2025-04-29 15:44:12.687 UTC [393] LOG:  statement: ALTER TABLE public.transactions OWNER TO kfa;
+2025-04-29 15:44:12.689 UTC [393] LOG:  statement: CREATE SEQUENCE public.transactions_id_seq
+	    AS integer
+	    START WITH 1
+	    INCREMENT BY 1
+	    NO MINVALUE
+	    NO MAXVALUE
+	    CACHE 1;
+2025-04-29 15:44:12.692 UTC [393] LOG:  statement: ALTER SEQUENCE public.transactions_id_seq OWNER TO kfa;
+2025-04-29 15:44:12.693 UTC [393] LOG:  statement: ALTER SEQUENCE public.transactions_id_seq OWNED BY public.transactions.id;
+2025-04-29 15:44:12.695 UTC [393] LOG:  statement: ALTER TABLE ONLY public.currentbalance ALTER COLUMN id SET DEFAULT nextval('public.currentbalance_id_seq'::regclass);
+2025-04-29 15:44:12.698 UTC [393] LOG:  statement: ALTER TABLE ONLY public.transactions ALTER COLUMN id SET DEFAULT nextval('public.transactions_id_seq'::regclass);
+2025-04-29 15:44:12.701 UTC [393] LOG:  statement: COPY public.currentbalance (id, balance) FROM stdin;
+2025-04-29 15:44:12.704 UTC [393] LOG:  statement: COPY public.transactions (id, date, "time", type, amount, name, ref, fee, remarks, created_at, updated_at) FROM stdin;
+2025-04-29 15:44:12.706 UTC [393] LOG:  statement: SELECT pg_catalog.setval('public.currentbalance_id_seq', 1, true);
+2025-04-29 15:44:12.709 UTC [393] LOG:  statement: SELECT pg_catalog.setval('public.transactions_id_seq', 3, true);
+2025-04-29 15:44:12.711 UTC [393] LOG:  statement: ALTER TABLE ONLY public.currentbalance
+	    ADD CONSTRAINT currentbalance_pkey PRIMARY KEY (id);
+2025-04-29 15:44:12.719 UTC [393] LOG:  statement: ALTER TABLE ONLY public.transactions
+	    ADD CONSTRAINT transactions_pkey PRIMARY KEY (id);
+2025-04-29 15:44:12.730 UTC [392] LOG:  statement: 
+	      DO $$ 
+	      BEGIN
+	        IF EXISTS (SELECT 1 FROM pg_type WHERE typname = 'transaction_type') THEN
+	          DROP TYPE transaction_type CASCADE;
+	        END IF;
+	        CREATE TYPE transaction_type AS ENUM ('Cash In', 'Cash Out', 'Load');
+	      END $$;
+	    
+2025-04-29 15:44:12.735 UTC [392] LOG:  statement: 
+	      CREATE TABLE IF NOT EXISTS Transactions (
+	        id SERIAL PRIMARY KEY,
+	        date TEXT NOT NULL,
+	        time TEXT NOT NULL,
+	        type transaction_type NOT NULL,
+	        amount TEXT NOT NULL,
+	        name TEXT NOT NULL,
+	        ref TEXT NOT NULL,
+	        fee TEXT NOT NULL,
+	        remarks TEXT NOT NULL,
+	        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+	        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+	      );
+	    
+2025-04-29 15:44:12.737 UTC [392] LOG:  statement: 
+	      DO $$ 
+	      BEGIN
+	        IF NOT EXISTS (SELECT 1 FROM information_schema.columns 
+	                       WHERE table_name = 'transactions' AND column_name = 'created_at') THEN
+	          ALTER TABLE Transactions ADD COLUMN created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP;
+	        END IF;
+	        IF NOT EXISTS (SELECT 1 FROM information_schema.columns 
+	                       WHERE table_name = 'transactions' AND column_name = 'updated_at') THEN
+	          ALTER TABLE Transactions ADD COLUMN updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP;
+	        END IF;
+	      END $$;
+	    
+2025-04-29 15:44:12.753 UTC [392] LOG:  statement: 
+	      CREATE TABLE IF NOT EXISTS CurrentBalance (
+	        id SERIAL PRIMARY KEY,
+	        balance DECIMAL NOT NULL DEFAULT 0.00
+	      );
+	    
+2025-04-29 15:44:12.754 UTC [392] LOG:  statement: SELECT * FROM CurrentBalance
+2025-04-29 15:44:14.551 UTC [392] LOG:  statement: SELECT balance FROM CurrentBalance WHERE id = 1
+2025-04-29 15:44:14.558 UTC [392] LOG:  statement: SELECT * FROM Transactions ORDER BY id DESC LIMIT 1
+2025-04-29 15:44:14.566 UTC [392] LOG:  statement: 
+	      SELECT 
+	        TO_CHAR(TO_DATE(date, 'YYYY-MM-DD'), 'YYYY-MM') AS month,
+	        COUNT(*) AS total_transactions,
+	        SUM(CAST(amount AS DECIMAL)) AS total_amount,
+	        SUM(CAST(fee AS DECIMAL)) AS total_fee
+	      FROM Transactions
+	      GROUP BY TO_CHAR(TO_DATE(date, 'YYYY-MM-DD'), 'YYYY-MM')
+	      ORDER BY month DESC
+	    
+2025-04-29 15:44:14.569 UTC [392] LOG:  execute <unnamed>: 
+	      SELECT SUM(CAST(fee AS DECIMAL)) AS total_fee
+	      FROM Transactions
+	      WHERE TO_CHAR(TO_DATE(date, 'YYYY-MM-DD'), 'YYYY-MM') = $1
+	    
+2025-04-29 15:44:14.569 UTC [392] DETAIL:  parameters: $1 = '2025-04'
+2025-04-29 15:44:14.570 UTC [392] LOG:  execute <unnamed>: 
+	      SELECT SUM(CAST(fee AS DECIMAL)) AS total_fee
+	      FROM Transactions
+	      WHERE TO_CHAR(TO_DATE(date, 'YYYY-MM-DD'), 'YYYY-MM') = $1
+	    
+2025-04-29 15:44:14.570 UTC [392] DETAIL:  parameters: $1 = '2025-03'
+2025-04-29 15:44:14.576 UTC [394] LOG:  execute <unnamed>: SELECT * FROM Transactions WHERE date = $1 ORDER BY id DESC
+2025-04-29 15:44:14.576 UTC [394] DETAIL:  parameters: $1 = '2025-04-29'
+2025-04-29 15:44:14.595 UTC [394] LOG:  statement: SELECT * FROM Transactions ORDER BY id DESC LIMIT 1
+2025-04-29 15:44:16.773 UTC [394] LOG:  execute <unnamed>: SELECT * FROM Transactions WHERE date = $1 ORDER BY id DESC
+2025-04-29 15:44:16.773 UTC [394] DETAIL:  parameters: $1 = '2025-04-29'
+2025-04-29 15:44:16.793 UTC [394] LOG:  statement: SELECT * FROM Transactions ORDER BY id DESC LIMIT 1
+2025-04-29 15:46:30.904 UTC [513] LOG:  execute <unnamed>: SELECT * FROM Transactions WHERE id = $1
+2025-04-29 15:46:30.904 UTC [513] DETAIL:  parameters: $1 = '3'
+2025-04-29 15:46:30.906 UTC [513] LOG:  execute <unnamed>: DELETE FROM Transactions WHERE id = $1
+2025-04-29 15:46:30.906 UTC [513] DETAIL:  parameters: $1 = '3'
+2025-04-29 15:46:32.026 UTC [513] LOG:  execute <unnamed>: SELECT * FROM Transactions WHERE date = $1 ORDER BY id DESC
+2025-04-29 15:46:32.026 UTC [513] DETAIL:  parameters: $1 = '2025-04-29'
+2025-04-29 15:46:32.030 UTC [513] LOG:  statement: SELECT balance FROM CurrentBalance WHERE id = 1
+2025-04-29 15:46:32.086 UTC [513] LOG:  statement: SELECT * FROM Transactions ORDER BY id DESC LIMIT 1
+2025-04-29 15:46:34.043 UTC [513] LOG:  execute <unnamed>: SELECT * FROM Transactions WHERE id = $1
+2025-04-29 15:46:34.043 UTC [513] DETAIL:  parameters: $1 = '2'
+2025-04-29 15:46:34.044 UTC [513] LOG:  execute <unnamed>: DELETE FROM Transactions WHERE id = $1
+2025-04-29 15:46:34.044 UTC [513] DETAIL:  parameters: $1 = '2'
+2025-04-29 15:46:35.918 UTC [513] LOG:  execute <unnamed>: SELECT * FROM Transactions WHERE date = $1 ORDER BY id DESC
+2025-04-29 15:46:35.918 UTC [513] DETAIL:  parameters: $1 = '2025-04-29'
+2025-04-29 15:46:35.933 UTC [513] LOG:  statement: SELECT * FROM Transactions ORDER BY id DESC LIMIT 1
+2025-04-29 15:46:35.941 UTC [514] LOG:  statement: SELECT balance FROM CurrentBalance WHERE id = 1
+2025-04-29 15:46:39.082 UTC [514] LOG:  execute <unnamed>: SELECT * FROM Transactions WHERE id = $1
+2025-04-29 15:46:39.082 UTC [514] DETAIL:  parameters: $1 = '1'
+2025-04-29 15:46:39.084 UTC [514] LOG:  execute <unnamed>: DELETE FROM Transactions WHERE id = $1
+2025-04-29 15:46:39.084 UTC [514] DETAIL:  parameters: $1 = '1'
+2025-04-29 15:46:40.342 UTC [514] LOG:  execute <unnamed>: SELECT * FROM Transactions WHERE date = $1 ORDER BY id DESC
+2025-04-29 15:46:40.342 UTC [514] DETAIL:  parameters: $1 = '2025-04-29'
+2025-04-29 15:46:40.342 UTC [513] LOG:  statement: SELECT balance FROM CurrentBalance WHERE id = 1
+2025-04-29 15:46:40.364 UTC [513] LOG:  statement: SELECT * FROM Transactions ORDER BY id DESC LIMIT 1
+2025-04-29 15:47:03.394 UTC [541] LOG:  statement: SET statement_timeout = 0;
+2025-04-29 15:47:03.395 UTC [541] LOG:  statement: SET lock_timeout = 0;
+2025-04-29 15:47:03.395 UTC [541] LOG:  statement: SET idle_in_transaction_session_timeout = 0;
+2025-04-29 15:47:03.396 UTC [541] LOG:  statement: SET client_encoding = 'UTF8';
+2025-04-29 15:47:03.396 UTC [541] LOG:  statement: SET standard_conforming_strings = on;
+2025-04-29 15:47:03.396 UTC [541] LOG:  statement: SELECT pg_catalog.set_config('search_path', '', false);
+2025-04-29 15:47:03.397 UTC [541] LOG:  statement: SET check_function_bodies = false;
+2025-04-29 15:47:03.398 UTC [541] LOG:  statement: SET xmloption = content;
+2025-04-29 15:47:03.398 UTC [541] LOG:  statement: SET client_min_messages = warning;
+2025-04-29 15:47:03.399 UTC [541] LOG:  statement: SET row_security = off;
+2025-04-29 15:47:03.399 UTC [541] LOG:  statement: CREATE TYPE public.transaction_type AS ENUM (
+	    'Cash In',
+	    'Cash Out',
+	    'Load'
+	);
+2025-04-29 15:47:03.400 UTC [541] ERROR:  type "transaction_type" already exists
+2025-04-29 15:47:03.400 UTC [541] STATEMENT:  CREATE TYPE public.transaction_type AS ENUM (
+	    'Cash In',
+	    'Cash Out',
+	    'Load'
+	);
+2025-04-29 15:47:03.400 UTC [541] LOG:  statement: ALTER TYPE public.transaction_type OWNER TO kfa;
+2025-04-29 15:47:03.401 UTC [541] LOG:  statement: SET default_tablespace = '';
+2025-04-29 15:47:03.401 UTC [541] LOG:  statement: SET default_table_access_method = heap;
+2025-04-29 15:47:03.402 UTC [541] LOG:  statement: CREATE TABLE public.currentbalance (
+	    id integer NOT NULL,
+	    balance numeric DEFAULT 0.00 NOT NULL
+	);
+2025-04-29 15:47:03.402 UTC [541] ERROR:  relation "currentbalance" already exists
+2025-04-29 15:47:03.402 UTC [541] STATEMENT:  CREATE TABLE public.currentbalance (
+	    id integer NOT NULL,
+	    balance numeric DEFAULT 0.00 NOT NULL
+	);
+2025-04-29 15:47:03.402 UTC [541] LOG:  statement: ALTER TABLE public.currentbalance OWNER TO kfa;
+2025-04-29 15:47:03.412 UTC [541] LOG:  statement: CREATE SEQUENCE public.currentbalance_id_seq
+	    AS integer
+	    START WITH 1
+	    INCREMENT BY 1
+	    NO MINVALUE
+	    NO MAXVALUE
+	    CACHE 1;
+2025-04-29 15:47:03.412 UTC [541] ERROR:  relation "currentbalance_id_seq" already exists
+2025-04-29 15:47:03.412 UTC [541] STATEMENT:  CREATE SEQUENCE public.currentbalance_id_seq
+	    AS integer
+	    START WITH 1
+	    INCREMENT BY 1
+	    NO MINVALUE
+	    NO MAXVALUE
+	    CACHE 1;
+2025-04-29 15:47:03.413 UTC [541] LOG:  statement: ALTER SEQUENCE public.currentbalance_id_seq OWNER TO kfa;
+2025-04-29 15:47:03.416 UTC [541] LOG:  statement: ALTER SEQUENCE public.currentbalance_id_seq OWNED BY public.currentbalance.id;
+2025-04-29 15:47:03.418 UTC [541] LOG:  statement: CREATE TABLE public.transactions (
+	    id integer NOT NULL,
+	    date text NOT NULL,
+	    "time" text NOT NULL,
+	    type public.transaction_type NOT NULL,
+	    amount text NOT NULL,
+	    name text NOT NULL,
+	    ref text NOT NULL,
+	    fee text NOT NULL,
+	    remarks text NOT NULL,
+	    created_at timestamp without time zone DEFAULT CURRENT_TIMESTAMP,
+	    updated_at timestamp without time zone DEFAULT CURRENT_TIMESTAMP
+	);
+2025-04-29 15:47:03.418 UTC [541] ERROR:  relation "transactions" already exists
+2025-04-29 15:47:03.418 UTC [541] STATEMENT:  CREATE TABLE public.transactions (
+	    id integer NOT NULL,
+	    date text NOT NULL,
+	    "time" text NOT NULL,
+	    type public.transaction_type NOT NULL,
+	    amount text NOT NULL,
+	    name text NOT NULL,
+	    ref text NOT NULL,
+	    fee text NOT NULL,
+	    remarks text NOT NULL,
+	    created_at timestamp without time zone DEFAULT CURRENT_TIMESTAMP,
+	    updated_at timestamp without time zone DEFAULT CURRENT_TIMESTAMP
+	);
+2025-04-29 15:47:03.419 UTC [541] LOG:  statement: ALTER TABLE public.transactions OWNER TO kfa;
+2025-04-29 15:47:03.421 UTC [541] LOG:  statement: CREATE SEQUENCE public.transactions_id_seq
+	    AS integer
+	    START WITH 1
+	    INCREMENT BY 1
+	    NO MINVALUE
+	    NO MAXVALUE
+	    CACHE 1;
+2025-04-29 15:47:03.421 UTC [541] ERROR:  relation "transactions_id_seq" already exists
+2025-04-29 15:47:03.421 UTC [541] STATEMENT:  CREATE SEQUENCE public.transactions_id_seq
+	    AS integer
+	    START WITH 1
+	    INCREMENT BY 1
+	    NO MINVALUE
+	    NO MAXVALUE
+	    CACHE 1;
+2025-04-29 15:47:03.421 UTC [541] LOG:  statement: ALTER SEQUENCE public.transactions_id_seq OWNER TO kfa;
+2025-04-29 15:47:03.425 UTC [541] LOG:  statement: ALTER SEQUENCE public.transactions_id_seq OWNED BY public.transactions.id;
+2025-04-29 15:47:03.427 UTC [541] LOG:  statement: ALTER TABLE ONLY public.currentbalance ALTER COLUMN id SET DEFAULT nextval('public.currentbalance_id_seq'::regclass);
+2025-04-29 15:47:03.430 UTC [541] LOG:  statement: ALTER TABLE ONLY public.transactions ALTER COLUMN id SET DEFAULT nextval('public.transactions_id_seq'::regclass);
+2025-04-29 15:47:03.432 UTC [541] LOG:  statement: COPY public.currentbalance (id, balance) FROM stdin;
+2025-04-29 15:47:03.433 UTC [541] ERROR:  duplicate key value violates unique constraint "currentbalance_pkey"
+2025-04-29 15:47:03.433 UTC [541] DETAIL:  Key (id)=(1) already exists.
+2025-04-29 15:47:03.433 UTC [541] CONTEXT:  COPY currentbalance, line 1
+2025-04-29 15:47:03.433 UTC [541] STATEMENT:  COPY public.currentbalance (id, balance) FROM stdin;
+2025-04-29 15:47:03.433 UTC [541] LOG:  statement: COPY public.transactions (id, date, "time", type, amount, name, ref, fee, remarks, created_at, updated_at) FROM stdin;
+2025-04-29 15:47:03.433 UTC [541] ERROR:  column "type" of relation "transactions" does not exist
+2025-04-29 15:47:03.433 UTC [541] STATEMENT:  COPY public.transactions (id, date, "time", type, amount, name, ref, fee, remarks, created_at, updated_at) FROM stdin;
+2025-04-29 15:47:03.434 UTC [541] ERROR:  syntax error at or near "1" at character 1
+2025-04-29 15:47:03.434 UTC [541] STATEMENT:  1	2025-04-29	11:38	Cash In	2000	KEV	12322	40	SENT	2025-04-29 15:38:52.792726	2025-04-29 15:38:52.792726
+	2	2025-04-29	11:38	Cash Out	500	KFA	12345	10	CLAIMED	2025-04-29 15:39:05.156333	2025-04-29 15:39:05.156333
+	3	2025-04-29	11:39	Load	20	AN20	44121	5	LOAD	2025-04-29 15:39:21.409391	2025-04-29 15:39:21.409391
+	--
+	-- Name: currentbalance_id_seq; Type: SEQUENCE SET; Schema: public; Owner: kfa
+	--
+	SELECT pg_catalog.setval('public.currentbalance_id_seq', 1, true);
+2025-04-29 15:47:03.434 UTC [541] LOG:  statement: SELECT pg_catalog.setval('public.transactions_id_seq', 3, true);
+2025-04-29 15:47:03.437 UTC [541] LOG:  statement: ALTER TABLE ONLY public.currentbalance
+	    ADD CONSTRAINT currentbalance_pkey PRIMARY KEY (id);
+2025-04-29 15:47:03.437 UTC [541] ERROR:  multiple primary keys for table "currentbalance" are not allowed
+2025-04-29 15:47:03.437 UTC [541] STATEMENT:  ALTER TABLE ONLY public.currentbalance
+	    ADD CONSTRAINT currentbalance_pkey PRIMARY KEY (id);
+2025-04-29 15:47:03.437 UTC [541] LOG:  statement: ALTER TABLE ONLY public.transactions
+	    ADD CONSTRAINT transactions_pkey PRIMARY KEY (id);
+2025-04-29 15:47:03.438 UTC [541] ERROR:  multiple primary keys for table "transactions" are not allowed
+2025-04-29 15:47:03.438 UTC [541] STATEMENT:  ALTER TABLE ONLY public.transactions
+	    ADD CONSTRAINT transactions_pkey PRIMARY KEY (id);
+2025-04-29 15:47:23.340 UTC [559] LOG:  statement: select * from transactions;
+2025-04-29 15:48:19.015 UTC [64] LOG:  checkpoint starting: time
+2025-04-29 15:48:26.107 UTC [64] LOG:  checkpoint complete: wrote 71 buffers (0.4%); 0 WAL file(s) added, 0 removed, 0 recycled; write=7.036 s, sync=0.034 s, total=7.092 s; sync files=55, longest=0.008 s, average=0.001 s; distance=315 kB, estimate=558 kB; lsn=0/19F3268, redo lsn=0/19F3230
+2025-04-29 15:49:42.057 UTC [559] LOG:  statement: drop schema public cascade;
+2025-04-29 15:49:43.686 UTC [559] LOG:  statement: select * from transactions;
+2025-04-29 15:49:43.686 UTC [559] ERROR:  relation "transactions" does not exist at character 15
+2025-04-29 15:49:43.686 UTC [559] STATEMENT:  select * from transactions;
+2025-04-29 15:49:51.747 UTC [689] FATAL:  password authentication failed for user "kfa"
+2025-04-29 15:49:51.747 UTC [689] DETAIL:  Connection matched file "/var/lib/postgresql/data/pg_hba.conf" line 128: "host all all all scram-sha-256"
+2025-04-29 15:49:57.677 UTC [691] LOG:  statement: create schema public;
+2025-04-29 15:49:59.955 UTC [691] LOG:  statement: select * from transactions;
+2025-04-29 15:49:59.955 UTC [691] ERROR:  relation "transactions" does not exist at character 15
+2025-04-29 15:49:59.955 UTC [691] STATEMENT:  select * from transactions;
+2025-04-29 15:50:02.699 UTC [691] LOG:  statement: SELECT n.nspname as "Schema",
+	  c.relname as "Name",
+	  CASE c.relkind WHEN 'r' THEN 'table' WHEN 'v' THEN 'view' WHEN 'm' THEN 'materialized view' WHEN 'i' THEN 'index' WHEN 'S' THEN 'sequence' WHEN 't' THEN 'TOAST table' WHEN 'f' THEN 'foreign table' WHEN 'p' THEN 'partitioned table' WHEN 'I' THEN 'partitioned index' END as "Type",
+	  pg_catalog.pg_get_userbyid(c.relowner) as "Owner"
+	FROM pg_catalog.pg_class c
+	     LEFT JOIN pg_catalog.pg_namespace n ON n.oid = c.relnamespace
+	     LEFT JOIN pg_catalog.pg_am am ON am.oid = c.relam
+	WHERE c.relkind IN ('r','p','')
+	      AND n.nspname <> 'pg_catalog'
+	      AND n.nspname !~ '^pg_toast'
+	      AND n.nspname <> 'information_schema'
+	  AND pg_catalog.pg_table_is_visible(c.oid)
+	ORDER BY 1,2;
+2025-04-29 15:50:06.601 UTC [701] LOG:  statement: SET statement_timeout = 0;
+2025-04-29 15:50:06.602 UTC [701] LOG:  statement: SET lock_timeout = 0;
+2025-04-29 15:50:06.602 UTC [701] LOG:  statement: SET idle_in_transaction_session_timeout = 0;
+2025-04-29 15:50:06.602 UTC [701] LOG:  statement: SET client_encoding = 'UTF8';
+2025-04-29 15:50:06.603 UTC [701] LOG:  statement: SET standard_conforming_strings = on;
+2025-04-29 15:50:06.603 UTC [701] LOG:  statement: SELECT pg_catalog.set_config('search_path', '', false);
+2025-04-29 15:50:06.604 UTC [701] LOG:  statement: SET check_function_bodies = false;
+2025-04-29 15:50:06.604 UTC [701] LOG:  statement: SET xmloption = content;
+2025-04-29 15:50:06.604 UTC [701] LOG:  statement: SET client_min_messages = warning;
+2025-04-29 15:50:06.604 UTC [701] LOG:  statement: SET row_security = off;
+2025-04-29 15:50:06.604 UTC [701] LOG:  statement: CREATE TYPE public.transaction_type AS ENUM (
+	    'Cash In',
+	    'Cash Out',
+	    'Load'
+	);
+2025-04-29 15:50:06.614 UTC [701] LOG:  statement: ALTER TYPE public.transaction_type OWNER TO kfa;
+2025-04-29 15:50:06.614 UTC [701] LOG:  statement: SET default_tablespace = '';
+2025-04-29 15:50:06.615 UTC [701] LOG:  statement: SET default_table_access_method = heap;
+2025-04-29 15:50:06.615 UTC [701] LOG:  statement: CREATE TABLE public.currentbalance (
+	    id integer NOT NULL,
+	    balance numeric DEFAULT 0.00 NOT NULL
+	);
+2025-04-29 15:50:06.624 UTC [701] LOG:  statement: ALTER TABLE public.currentbalance OWNER TO kfa;
+2025-04-29 15:50:06.627 UTC [701] LOG:  statement: CREATE SEQUENCE public.currentbalance_id_seq
+	    AS integer
+	    START WITH 1
+	    INCREMENT BY 1
+	    NO MINVALUE
+	    NO MAXVALUE
+	    CACHE 1;
+2025-04-29 15:50:06.630 UTC [701] LOG:  statement: ALTER SEQUENCE public.currentbalance_id_seq OWNER TO kfa;
+2025-04-29 15:50:06.632 UTC [701] LOG:  statement: ALTER SEQUENCE public.currentbalance_id_seq OWNED BY public.currentbalance.id;
+2025-04-29 15:50:06.634 UTC [701] LOG:  statement: CREATE TABLE public.transactions (
+	    id integer NOT NULL,
+	    date text NOT NULL,
+	    "time" text NOT NULL,
+	    type public.transaction_type NOT NULL,
+	    amount text NOT NULL,
+	    name text NOT NULL,
+	    ref text NOT NULL,
+	    fee text NOT NULL,
+	    remarks text NOT NULL,
+	    created_at timestamp without time zone DEFAULT CURRENT_TIMESTAMP,
+	    updated_at timestamp without time zone DEFAULT CURRENT_TIMESTAMP
+	);
+2025-04-29 15:50:06.642 UTC [701] LOG:  statement: ALTER TABLE public.transactions OWNER TO kfa;
+2025-04-29 15:50:06.645 UTC [701] LOG:  statement: CREATE SEQUENCE public.transactions_id_seq
+	    AS integer
+	    START WITH 1
+	    INCREMENT BY 1
+	    NO MINVALUE
+	    NO MAXVALUE
+	    CACHE 1;
+2025-04-29 15:50:06.647 UTC [701] LOG:  statement: ALTER SEQUENCE public.transactions_id_seq OWNER TO kfa;
+2025-04-29 15:50:06.649 UTC [701] LOG:  statement: ALTER SEQUENCE public.transactions_id_seq OWNED BY public.transactions.id;
+2025-04-29 15:50:06.651 UTC [701] LOG:  statement: ALTER TABLE ONLY public.currentbalance ALTER COLUMN id SET DEFAULT nextval('public.currentbalance_id_seq'::regclass);
+2025-04-29 15:50:06.653 UTC [701] LOG:  statement: ALTER TABLE ONLY public.transactions ALTER COLUMN id SET DEFAULT nextval('public.transactions_id_seq'::regclass);
+2025-04-29 15:50:06.655 UTC [701] LOG:  statement: COPY public.currentbalance (id, balance) FROM stdin;
+2025-04-29 15:50:06.658 UTC [701] LOG:  statement: COPY public.transactions (id, date, "time", type, amount, name, ref, fee, remarks, created_at, updated_at) FROM stdin;
+2025-04-29 15:50:06.662 UTC [701] LOG:  statement: SELECT pg_catalog.setval('public.currentbalance_id_seq', 1, true);
+2025-04-29 15:50:06.664 UTC [701] LOG:  statement: SELECT pg_catalog.setval('public.transactions_id_seq', 3, true);
+2025-04-29 15:50:06.666 UTC [701] LOG:  statement: ALTER TABLE ONLY public.currentbalance
+	    ADD CONSTRAINT currentbalance_pkey PRIMARY KEY (id);
+2025-04-29 15:50:06.673 UTC [701] LOG:  statement: ALTER TABLE ONLY public.transactions
+	    ADD CONSTRAINT transactions_pkey PRIMARY KEY (id);
+2025-04-29 15:50:11.119 UTC [712] LOG:  statement: SELECT n.nspname as "Schema",
+	  c.relname as "Name",
+	  CASE c.relkind WHEN 'r' THEN 'table' WHEN 'v' THEN 'view' WHEN 'm' THEN 'materialized view' WHEN 'i' THEN 'index' WHEN 'S' THEN 'sequence' WHEN 't' THEN 'TOAST table' WHEN 'f' THEN 'foreign table' WHEN 'p' THEN 'partitioned table' WHEN 'I' THEN 'partitioned index' END as "Type",
+	  pg_catalog.pg_get_userbyid(c.relowner) as "Owner"
+	FROM pg_catalog.pg_class c
+	     LEFT JOIN pg_catalog.pg_namespace n ON n.oid = c.relnamespace
+	     LEFT JOIN pg_catalog.pg_am am ON am.oid = c.relam
+	WHERE c.relkind IN ('r','p','')
+	      AND n.nspname <> 'pg_catalog'
+	      AND n.nspname !~ '^pg_toast'
+	      AND n.nspname <> 'information_schema'
+	  AND pg_catalog.pg_table_is_visible(c.oid)
+	ORDER BY 1,2;
+2025-04-29 15:50:20.535 UTC [712] LOG:  statement: select * from transactions;
+2025-04-29 15:50:29.051 UTC [712] LOG:  statement: SELECT c.relname, NULL::pg_catalog.text FROM pg_catalog.pg_class c WHERE c.relkind IN ('r', 'S', 'v', 'm', 'f', 'p') AND (c.relname) LIKE 'cu%' AND pg_catalog.pg_table_is_visible(c.oid) AND c.relnamespace <> (SELECT oid FROM pg_catalog.pg_namespace WHERE nspname = 'pg_catalog')
+	UNION ALL
+	SELECT NULL::pg_catalog.text, n.nspname FROM pg_catalog.pg_namespace n WHERE n.nspname LIKE 'cu%' AND n.nspname NOT LIKE E'pg\\_%'
+	LIMIT 1000
+2025-04-29 15:50:29.730 UTC [712] LOG:  statement: select * from currentbalance;
+2025-04-29 15:53:19.187 UTC [64] LOG:  checkpoint starting: time
+2025-04-29 15:53:25.271 UTC [64] LOG:  checkpoint complete: wrote 61 buffers (0.4%); 0 WAL file(s) added, 0 removed, 0 recycled; write=6.039 s, sync=0.019 s, total=6.084 s; sync files=50, longest=0.005 s, average=0.001 s; distance=294 kB, estimate=531 kB; lsn=0/1A3CB28, redo lsn=0/1A3CAF0
