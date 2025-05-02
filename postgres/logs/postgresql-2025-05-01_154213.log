@@ -1,0 +1,507 @@
+2025-05-01 15:42:13.020 UTC [1] LOG:  starting PostgreSQL 16.8 (Debian 16.8-1.pgdg120+1) on x86_64-pc-linux-gnu, compiled by gcc (Debian 12.2.0-14) 12.2.0, 64-bit
+2025-05-01 15:42:13.021 UTC [1] LOG:  listening on IPv4 address "0.0.0.0", port 5432
+2025-05-01 15:42:13.021 UTC [1] LOG:  listening on IPv6 address "::", port 5432
+2025-05-01 15:42:13.025 UTC [1] LOG:  listening on Unix socket "/var/run/postgresql/.s.PGSQL.5432"
+2025-05-01 15:42:13.031 UTC [66] LOG:  database system was shut down at 2025-05-01 15:42:12 UTC
+2025-05-01 15:42:13.038 UTC [1] LOG:  database system is ready to accept connections
+2025-05-01 15:42:17.798 UTC [78] LOG:  statement: 
+	      DO $$ 
+	      BEGIN
+	        IF EXISTS (SELECT 1 FROM pg_type WHERE typname = 'transaction_type') THEN
+	          DROP TYPE transaction_type CASCADE;
+	        END IF;
+	        CREATE TYPE transaction_type AS ENUM ('Cash In', 'Cash Out', 'Load');
+	      END $$;
+	    
+2025-05-01 15:42:17.803 UTC [78] LOG:  statement: 
+	      CREATE TABLE IF NOT EXISTS Transactions (
+	        id SERIAL PRIMARY KEY,
+	        date TEXT NOT NULL,
+	        time TEXT NOT NULL,
+	        type transaction_type NOT NULL,
+	        amount TEXT NOT NULL,
+	        name TEXT NOT NULL,
+	        ref TEXT NOT NULL,
+	        fee TEXT NOT NULL,
+	        remarks TEXT NOT NULL,
+	        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+	        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+	      );
+	    
+2025-05-01 15:42:17.813 UTC [78] LOG:  statement: 
+	      DO $$ 
+	      BEGIN
+	        IF NOT EXISTS (SELECT 1 FROM information_schema.columns 
+	                       WHERE table_name = 'transactions' AND column_name = 'created_at') THEN
+	          ALTER TABLE Transactions ADD COLUMN created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP;
+	        END IF;
+	        IF NOT EXISTS (SELECT 1 FROM information_schema.columns 
+	                       WHERE table_name = 'transactions' AND column_name = 'updated_at') THEN
+	          ALTER TABLE Transactions ADD COLUMN updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP;
+	        END IF;
+	      END $$;
+	    
+2025-05-01 15:42:17.821 UTC [78] LOG:  statement: 
+	      CREATE TABLE IF NOT EXISTS CurrentBalance (
+	        id SERIAL PRIMARY KEY,
+	        balance DECIMAL NOT NULL DEFAULT 0.00
+	      );
+	    
+2025-05-01 15:42:17.829 UTC [78] LOG:  statement: SELECT * FROM CurrentBalance
+2025-05-01 15:42:17.830 UTC [78] LOG:  statement: INSERT INTO CurrentBalance (balance) VALUES (0.00)
+2025-05-01 15:42:30.008 UTC [88] LOG:  statement: SELECT balance FROM CurrentBalance WHERE id = 1
+2025-05-01 15:42:30.009 UTC [92] LOG:  statement: 
+	      SELECT type, COUNT(*) as count
+	      FROM Transactions
+	      GROUP BY type
+	    
+2025-05-01 15:42:30.009 UTC [89] LOG:  execute <unnamed>: SELECT * FROM Transactions WHERE date = $1 ORDER BY id DESC
+2025-05-01 15:42:30.009 UTC [89] DETAIL:  parameters: $1 = '2025-05-01'
+2025-05-01 15:42:30.010 UTC [91] LOG:  execute <unnamed>: 
+	      SELECT date, SUM(CAST(amount AS DECIMAL)) as total_amount
+	      FROM Transactions
+	      WHERE date >= $1
+	      GROUP BY date
+	      ORDER BY date ASC
+	    
+2025-05-01 15:42:30.010 UTC [91] DETAIL:  parameters: $1 = '2025-04-25'
+2025-05-01 15:42:30.018 UTC [90] LOG:  statement: SELECT * FROM Transactions ORDER BY id DESC LIMIT 1
+2025-05-01 15:42:30.049 UTC [90] LOG:  statement: SELECT * FROM Transactions ORDER BY id DESC LIMIT 1
+2025-05-01 15:42:38.808 UTC [90] LOG:  statement: DROP SCHEMA public CASCADE
+2025-05-01 15:42:38.813 UTC [90] LOG:  statement: CREATE SCHEMA public
+2025-05-01 15:42:38.955 UTC [101] LOG:  statement: SET statement_timeout = 0;
+2025-05-01 15:42:38.955 UTC [101] LOG:  statement: SET lock_timeout = 0;
+2025-05-01 15:42:38.955 UTC [101] LOG:  statement: SET idle_in_transaction_session_timeout = 0;
+2025-05-01 15:42:38.955 UTC [101] LOG:  statement: SET client_encoding = 'UTF8';
+2025-05-01 15:42:38.955 UTC [101] LOG:  statement: SET standard_conforming_strings = on;
+2025-05-01 15:42:38.955 UTC [101] LOG:  statement: SELECT pg_catalog.set_config('search_path', '', false);
+2025-05-01 15:42:38.956 UTC [101] LOG:  statement: SET check_function_bodies = false;
+2025-05-01 15:42:38.956 UTC [101] LOG:  statement: SET xmloption = content;
+2025-05-01 15:42:38.956 UTC [101] LOG:  statement: SET client_min_messages = warning;
+2025-05-01 15:42:38.956 UTC [101] LOG:  statement: SET row_security = off;
+2025-05-01 15:42:38.956 UTC [101] LOG:  statement: CREATE TYPE public.transaction_type AS ENUM (
+	    'Cash In',
+	    'Cash Out',
+	    'Load'
+	);
+2025-05-01 15:42:38.958 UTC [101] LOG:  statement: ALTER TYPE public.transaction_type OWNER TO kfa;
+2025-05-01 15:42:38.958 UTC [101] LOG:  statement: SET default_tablespace = '';
+2025-05-01 15:42:38.958 UTC [101] LOG:  statement: SET default_table_access_method = heap;
+2025-05-01 15:42:38.958 UTC [101] LOG:  statement: CREATE TABLE public.currentbalance (
+	    id integer NOT NULL,
+	    balance numeric DEFAULT 0.00 NOT NULL
+	);
+2025-05-01 15:42:38.963 UTC [101] LOG:  statement: ALTER TABLE public.currentbalance OWNER TO kfa;
+2025-05-01 15:42:38.964 UTC [101] LOG:  statement: CREATE SEQUENCE public.currentbalance_id_seq
+	    AS integer
+	    START WITH 1
+	    INCREMENT BY 1
+	    NO MINVALUE
+	    NO MAXVALUE
+	    CACHE 1;
+2025-05-01 15:42:38.966 UTC [101] LOG:  statement: ALTER SEQUENCE public.currentbalance_id_seq OWNER TO kfa;
+2025-05-01 15:42:38.967 UTC [101] LOG:  statement: ALTER SEQUENCE public.currentbalance_id_seq OWNED BY public.currentbalance.id;
+2025-05-01 15:42:38.969 UTC [101] LOG:  statement: CREATE TABLE public.transactions (
+	    id integer NOT NULL,
+	    date text NOT NULL,
+	    "time" text NOT NULL,
+	    type public.transaction_type NOT NULL,
+	    amount text NOT NULL,
+	    name text NOT NULL,
+	    ref text NOT NULL,
+	    fee text NOT NULL,
+	    remarks text NOT NULL,
+	    created_at timestamp without time zone DEFAULT CURRENT_TIMESTAMP,
+	    updated_at timestamp without time zone DEFAULT CURRENT_TIMESTAMP
+	);
+2025-05-01 15:42:38.973 UTC [101] LOG:  statement: ALTER TABLE public.transactions OWNER TO kfa;
+2025-05-01 15:42:38.974 UTC [101] LOG:  statement: CREATE SEQUENCE public.transactions_id_seq
+	    AS integer
+	    START WITH 1
+	    INCREMENT BY 1
+	    NO MINVALUE
+	    NO MAXVALUE
+	    CACHE 1;
+2025-05-01 15:42:38.976 UTC [101] LOG:  statement: ALTER SEQUENCE public.transactions_id_seq OWNER TO kfa;
+2025-05-01 15:42:38.977 UTC [101] LOG:  statement: ALTER SEQUENCE public.transactions_id_seq OWNED BY public.transactions.id;
+2025-05-01 15:42:38.978 UTC [101] LOG:  statement: ALTER TABLE ONLY public.currentbalance ALTER COLUMN id SET DEFAULT nextval('public.currentbalance_id_seq'::regclass);
+2025-05-01 15:42:38.979 UTC [101] LOG:  statement: ALTER TABLE ONLY public.transactions ALTER COLUMN id SET DEFAULT nextval('public.transactions_id_seq'::regclass);
+2025-05-01 15:42:38.980 UTC [101] LOG:  statement: COPY public.currentbalance (id, balance) FROM stdin;
+2025-05-01 15:42:38.982 UTC [101] LOG:  statement: COPY public.transactions (id, date, "time", type, amount, name, ref, fee, remarks, created_at, updated_at) FROM stdin;
+2025-05-01 15:42:38.983 UTC [101] LOG:  statement: SELECT pg_catalog.setval('public.currentbalance_id_seq', 1, true);
+2025-05-01 15:42:38.984 UTC [101] LOG:  statement: SELECT pg_catalog.setval('public.transactions_id_seq', 43, true);
+2025-05-01 15:42:38.985 UTC [101] LOG:  statement: ALTER TABLE ONLY public.currentbalance
+	    ADD CONSTRAINT currentbalance_pkey PRIMARY KEY (id);
+2025-05-01 15:42:38.991 UTC [101] LOG:  statement: ALTER TABLE ONLY public.transactions
+	    ADD CONSTRAINT transactions_pkey PRIMARY KEY (id);
+2025-05-01 15:42:39.004 UTC [90] LOG:  statement: 
+	      DO $$ 
+	      BEGIN
+	        IF EXISTS (SELECT 1 FROM pg_type WHERE typname = 'transaction_type') THEN
+	          DROP TYPE transaction_type CASCADE;
+	        END IF;
+	        CREATE TYPE transaction_type AS ENUM ('Cash In', 'Cash Out', 'Load');
+	      END $$;
+	    
+2025-05-01 15:42:39.007 UTC [90] LOG:  statement: 
+	      CREATE TABLE IF NOT EXISTS Transactions (
+	        id SERIAL PRIMARY KEY,
+	        date TEXT NOT NULL,
+	        time TEXT NOT NULL,
+	        type transaction_type NOT NULL,
+	        amount TEXT NOT NULL,
+	        name TEXT NOT NULL,
+	        ref TEXT NOT NULL,
+	        fee TEXT NOT NULL,
+	        remarks TEXT NOT NULL,
+	        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+	        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+	      );
+	    
+2025-05-01 15:42:39.008 UTC [90] LOG:  statement: 
+	      DO $$ 
+	      BEGIN
+	        IF NOT EXISTS (SELECT 1 FROM information_schema.columns 
+	                       WHERE table_name = 'transactions' AND column_name = 'created_at') THEN
+	          ALTER TABLE Transactions ADD COLUMN created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP;
+	        END IF;
+	        IF NOT EXISTS (SELECT 1 FROM information_schema.columns 
+	                       WHERE table_name = 'transactions' AND column_name = 'updated_at') THEN
+	          ALTER TABLE Transactions ADD COLUMN updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP;
+	        END IF;
+	      END $$;
+	    
+2025-05-01 15:42:39.014 UTC [90] LOG:  statement: 
+	      CREATE TABLE IF NOT EXISTS CurrentBalance (
+	        id SERIAL PRIMARY KEY,
+	        balance DECIMAL NOT NULL DEFAULT 0.00
+	      );
+	    
+2025-05-01 15:42:39.014 UTC [90] LOG:  statement: SELECT * FROM CurrentBalance
+2025-05-01 15:42:40.037 UTC [90] LOG:  statement: SELECT balance FROM CurrentBalance WHERE id = 1
+2025-05-01 15:42:40.040 UTC [90] LOG:  statement: 
+	      SELECT 
+	        TO_CHAR(TO_DATE(date, 'YYYY-MM-DD'), 'YYYY-MM') AS month,
+	        COUNT(*) AS total_transactions,
+	        SUM(CAST(amount AS DECIMAL)) AS total_amount,
+	        SUM(CAST(fee AS DECIMAL)) AS total_fee
+	      FROM Transactions
+	      GROUP BY TO_CHAR(TO_DATE(date, 'YYYY-MM-DD'), 'YYYY-MM')
+	      ORDER BY month DESC
+	    
+2025-05-01 15:42:40.041 UTC [89] LOG:  execute <unnamed>: SELECT * FROM Transactions WHERE date = $1 ORDER BY id DESC
+2025-05-01 15:42:40.041 UTC [89] DETAIL:  parameters: $1 = '2025-05-01'
+2025-05-01 15:42:40.045 UTC [90] LOG:  statement: 
+	      SELECT type, COUNT(*) as count
+	      FROM Transactions
+	      GROUP BY type
+	    
+2025-05-01 15:42:40.046 UTC [90] ERROR:  column "type" does not exist at character 15
+2025-05-01 15:42:40.046 UTC [90] HINT:  Perhaps you meant to reference the column "transactions.time".
+2025-05-01 15:42:40.046 UTC [90] STATEMENT:  
+	      SELECT type, COUNT(*) as count
+	      FROM Transactions
+	      GROUP BY type
+	    
+2025-05-01 15:42:40.046 UTC [89] LOG:  execute <unnamed>: 
+	      SELECT date, SUM(CAST(amount AS DECIMAL)) as total_amount
+	      FROM Transactions
+	      WHERE date >= $1
+	      GROUP BY date
+	      ORDER BY date ASC
+	    
+2025-05-01 15:42:40.046 UTC [89] DETAIL:  parameters: $1 = '2025-04-25'
+2025-05-01 15:42:40.053 UTC [89] LOG:  statement: SELECT * FROM Transactions ORDER BY id DESC LIMIT 1
+2025-05-01 15:42:40.058 UTC [103] LOG:  statement: 
+	      SELECT COUNT(DISTINCT name) AS total_users
+	      FROM Transactions
+	    
+2025-05-01 15:42:40.059 UTC [102] ERROR:  column "type" does not exist at character 52
+2025-05-01 15:42:40.059 UTC [102] HINT:  Perhaps you meant to reference the column "transactions.time".
+2025-05-01 15:42:40.059 UTC [102] STATEMENT:  
+	      SELECT 
+	        name,
+	        SUM(CASE WHEN type = 'Cash In' THEN 1 ELSE 0 END) AS cash_in_count,
+	        SUM(CASE WHEN type = 'Cash Out' THEN 1 ELSE 0 END) AS cash_out_count,
+	        SUM(CASE WHEN type = 'Load' THEN 1 ELSE 0 END) AS load_count,
+	        MAX(date) AS last_transaction
+	      FROM Transactions
+	      GROUP BY name
+	      ORDER BY name ASC
+	      LIMIT $1 OFFSET $2
+	    
+2025-05-01 15:42:40.060 UTC [104] LOG:  execute <unnamed>: 
+	      SELECT SUM(CAST(fee AS DECIMAL)) AS total_fee
+	      FROM Transactions
+	      WHERE TO_CHAR(TO_DATE(date, 'YYYY-MM-DD'), 'YYYY-MM') = $1
+	    
+2025-05-01 15:42:40.060 UTC [104] DETAIL:  parameters: $1 = '2025-04'
+2025-05-01 15:42:40.061 UTC [104] LOG:  execute <unnamed>: 
+	      SELECT SUM(CAST(fee AS DECIMAL)) AS total_fee
+	      FROM Transactions
+	      WHERE TO_CHAR(TO_DATE(date, 'YYYY-MM-DD'), 'YYYY-MM') = $1
+	    
+2025-05-01 15:42:40.061 UTC [104] DETAIL:  parameters: $1 = '2025-03'
+2025-05-01 15:42:44.548 UTC [104] LOG:  execute <unnamed>: SELECT * FROM Transactions WHERE date = $1 ORDER BY id DESC
+2025-05-01 15:42:44.548 UTC [104] DETAIL:  parameters: $1 = '2025-05-01'
+2025-05-01 15:42:44.564 UTC [104] LOG:  statement: SELECT * FROM Transactions ORDER BY id DESC LIMIT 1
+2025-05-01 15:42:47.341 UTC [104] LOG:  statement: SELECT balance FROM CurrentBalance WHERE id = 1
+2025-05-01 15:42:47.344 UTC [104] LOG:  execute <unnamed>: SELECT * FROM Transactions WHERE date = $1 ORDER BY id DESC
+2025-05-01 15:42:47.344 UTC [104] DETAIL:  parameters: $1 = '2025-05-01'
+2025-05-01 15:42:47.345 UTC [103] LOG:  execute <unnamed>: 
+	      SELECT date, SUM(CAST(amount AS DECIMAL)) as total_amount
+	      FROM Transactions
+	      WHERE date >= $1
+	      GROUP BY date
+	      ORDER BY date ASC
+	    
+2025-05-01 15:42:47.345 UTC [103] DETAIL:  parameters: $1 = '2025-04-25'
+2025-05-01 15:42:47.348 UTC [103] LOG:  statement: 
+	      SELECT type, COUNT(*) as count
+	      FROM Transactions
+	      GROUP BY type
+	    
+2025-05-01 15:42:47.348 UTC [103] ERROR:  column "type" does not exist at character 15
+2025-05-01 15:42:47.348 UTC [103] HINT:  Perhaps you meant to reference the column "transactions.time".
+2025-05-01 15:42:47.348 UTC [103] STATEMENT:  
+	      SELECT type, COUNT(*) as count
+	      FROM Transactions
+	      GROUP BY type
+	    
+2025-05-01 15:42:47.352 UTC [104] LOG:  statement: SELECT * FROM Transactions ORDER BY id DESC LIMIT 1
+2025-05-01 15:43:13.615 UTC [132] LOG:  statement: drop schema public cascade;
+2025-05-01 15:43:15.215 UTC [132] LOG:  statement: create schema public;
+2025-05-01 15:43:23.167 UTC [143] LOG:  statement: SET statement_timeout = 0;
+2025-05-01 15:43:23.167 UTC [143] LOG:  statement: SET lock_timeout = 0;
+2025-05-01 15:43:23.167 UTC [143] LOG:  statement: SET idle_in_transaction_session_timeout = 0;
+2025-05-01 15:43:23.168 UTC [143] LOG:  statement: SET client_encoding = 'UTF8';
+2025-05-01 15:43:23.168 UTC [143] LOG:  statement: SET standard_conforming_strings = on;
+2025-05-01 15:43:23.168 UTC [143] LOG:  statement: SELECT pg_catalog.set_config('search_path', '', false);
+2025-05-01 15:43:23.168 UTC [143] LOG:  statement: SET check_function_bodies = false;
+2025-05-01 15:43:23.168 UTC [143] LOG:  statement: SET xmloption = content;
+2025-05-01 15:43:23.169 UTC [143] LOG:  statement: SET client_min_messages = warning;
+2025-05-01 15:43:23.169 UTC [143] LOG:  statement: SET row_security = off;
+2025-05-01 15:43:23.169 UTC [143] LOG:  statement: CREATE TYPE public.transaction_type AS ENUM (
+	    'Cash In',
+	    'Cash Out',
+	    'Load'
+	);
+2025-05-01 15:43:23.171 UTC [143] LOG:  statement: ALTER TYPE public.transaction_type OWNER TO kfa;
+2025-05-01 15:43:23.172 UTC [143] LOG:  statement: SET default_tablespace = '';
+2025-05-01 15:43:23.172 UTC [143] LOG:  statement: SET default_table_access_method = heap;
+2025-05-01 15:43:23.172 UTC [143] LOG:  statement: CREATE TABLE public.currentbalance (
+	    id integer NOT NULL,
+	    balance numeric DEFAULT 0.00 NOT NULL
+	);
+2025-05-01 15:43:23.178 UTC [143] LOG:  statement: ALTER TABLE public.currentbalance OWNER TO kfa;
+2025-05-01 15:43:23.179 UTC [143] LOG:  statement: CREATE SEQUENCE public.currentbalance_id_seq
+	    AS integer
+	    START WITH 1
+	    INCREMENT BY 1
+	    NO MINVALUE
+	    NO MAXVALUE
+	    CACHE 1;
+2025-05-01 15:43:23.180 UTC [143] LOG:  statement: ALTER SEQUENCE public.currentbalance_id_seq OWNER TO kfa;
+2025-05-01 15:43:23.181 UTC [143] LOG:  statement: ALTER SEQUENCE public.currentbalance_id_seq OWNED BY public.currentbalance.id;
+2025-05-01 15:43:23.183 UTC [143] LOG:  statement: CREATE TABLE public.transactions (
+	    id integer NOT NULL,
+	    date text NOT NULL,
+	    "time" text NOT NULL,
+	    type public.transaction_type NOT NULL,
+	    amount text NOT NULL,
+	    name text NOT NULL,
+	    ref text NOT NULL,
+	    fee text NOT NULL,
+	    remarks text NOT NULL,
+	    created_at timestamp without time zone DEFAULT CURRENT_TIMESTAMP,
+	    updated_at timestamp without time zone DEFAULT CURRENT_TIMESTAMP
+	);
+2025-05-01 15:43:23.187 UTC [143] LOG:  statement: ALTER TABLE public.transactions OWNER TO kfa;
+2025-05-01 15:43:23.188 UTC [143] LOG:  statement: CREATE SEQUENCE public.transactions_id_seq
+	    AS integer
+	    START WITH 1
+	    INCREMENT BY 1
+	    NO MINVALUE
+	    NO MAXVALUE
+	    CACHE 1;
+2025-05-01 15:43:23.190 UTC [143] LOG:  statement: ALTER SEQUENCE public.transactions_id_seq OWNER TO kfa;
+2025-05-01 15:43:23.192 UTC [143] LOG:  statement: ALTER SEQUENCE public.transactions_id_seq OWNED BY public.transactions.id;
+2025-05-01 15:43:23.193 UTC [143] LOG:  statement: ALTER TABLE ONLY public.currentbalance ALTER COLUMN id SET DEFAULT nextval('public.currentbalance_id_seq'::regclass);
+2025-05-01 15:43:23.195 UTC [143] LOG:  statement: ALTER TABLE ONLY public.transactions ALTER COLUMN id SET DEFAULT nextval('public.transactions_id_seq'::regclass);
+2025-05-01 15:43:23.196 UTC [143] LOG:  statement: COPY public.currentbalance (id, balance) FROM stdin;
+2025-05-01 15:43:23.197 UTC [143] LOG:  statement: COPY public.transactions (id, date, "time", type, amount, name, ref, fee, remarks, created_at, updated_at) FROM stdin;
+2025-05-01 15:43:23.199 UTC [143] LOG:  statement: SELECT pg_catalog.setval('public.currentbalance_id_seq', 1, true);
+2025-05-01 15:43:23.200 UTC [143] LOG:  statement: SELECT pg_catalog.setval('public.transactions_id_seq', 43, true);
+2025-05-01 15:43:23.201 UTC [143] LOG:  statement: ALTER TABLE ONLY public.currentbalance
+	    ADD CONSTRAINT currentbalance_pkey PRIMARY KEY (id);
+2025-05-01 15:43:23.205 UTC [143] LOG:  statement: ALTER TABLE ONLY public.transactions
+	    ADD CONSTRAINT transactions_pkey PRIMARY KEY (id);
+2025-05-01 15:44:20.468 UTC [144] LOG:  statement: SELECT balance FROM CurrentBalance WHERE id = 1
+2025-05-01 15:44:20.469 UTC [146] LOG:  statement: SELECT * FROM Transactions ORDER BY id DESC LIMIT 1
+2025-05-01 15:44:20.469 UTC [145] LOG:  execute <unnamed>: SELECT * FROM Transactions WHERE date = $1 ORDER BY id DESC
+2025-05-01 15:44:20.469 UTC [145] DETAIL:  parameters: $1 = '2025-05-01'
+2025-05-01 15:44:20.474 UTC [148] LOG:  statement: 
+	      SELECT type, COUNT(*) as count
+	      FROM Transactions
+	      GROUP BY type
+	    
+2025-05-01 15:44:20.474 UTC [147] LOG:  execute <unnamed>: 
+	      SELECT date, SUM(CAST(amount AS DECIMAL)) as total_amount
+	      FROM Transactions
+	      WHERE date >= $1
+	      GROUP BY date
+	      ORDER BY date ASC
+	    
+2025-05-01 15:44:20.474 UTC [147] DETAIL:  parameters: $1 = '2025-04-25'
+2025-05-01 15:44:20.481 UTC [148] LOG:  statement: SELECT * FROM Transactions ORDER BY id DESC LIMIT 1
+2025-05-01 15:43:27.457 UTC [148] LOG:  execute <unnamed>: SELECT * FROM Transactions WHERE date = $1 ORDER BY id DESC
+2025-05-01 15:43:27.457 UTC [148] DETAIL:  parameters: $1 = '2025-05-01'
+2025-05-01 15:43:27.463 UTC [148] LOG:  statement: SELECT * FROM Transactions ORDER BY id DESC LIMIT 1
+2025-05-01 15:43:28.112 UTC [147] LOG:  statement: 
+	      SELECT COUNT(DISTINCT name) AS total_users
+	      FROM Transactions
+	    
+2025-05-01 15:43:28.112 UTC [145] LOG:  statement: 
+	      SELECT 
+	        TO_CHAR(TO_DATE(date, 'YYYY-MM-DD'), 'YYYY-MM') AS month,
+	        COUNT(*) AS total_transactions,
+	        SUM(CAST(amount AS DECIMAL)) AS total_amount,
+	        SUM(CAST(fee AS DECIMAL)) AS total_fee
+	      FROM Transactions
+	      GROUP BY TO_CHAR(TO_DATE(date, 'YYYY-MM-DD'), 'YYYY-MM')
+	      ORDER BY month DESC
+	    
+2025-05-01 15:43:28.112 UTC [148] LOG:  execute <unnamed>: 
+	      SELECT 
+	        name,
+	        SUM(CASE WHEN type = 'Cash In' THEN 1 ELSE 0 END) AS cash_in_count,
+	        SUM(CASE WHEN type = 'Cash Out' THEN 1 ELSE 0 END) AS cash_out_count,
+	        SUM(CASE WHEN type = 'Load' THEN 1 ELSE 0 END) AS load_count,
+	        MAX(date) AS last_transaction
+	      FROM Transactions
+	      GROUP BY name
+	      ORDER BY name ASC
+	      LIMIT $1 OFFSET $2
+	    
+2025-05-01 15:43:28.112 UTC [148] DETAIL:  parameters: $1 = '10', $2 = '0'
+2025-05-01 15:43:28.112 UTC [146] LOG:  execute <unnamed>: 
+	      SELECT SUM(CAST(fee AS DECIMAL)) AS total_fee
+	      FROM Transactions
+	      WHERE TO_CHAR(TO_DATE(date, 'YYYY-MM-DD'), 'YYYY-MM') = $1
+	    
+2025-05-01 15:43:28.112 UTC [146] DETAIL:  parameters: $1 = '2025-04'
+2025-05-01 15:43:28.114 UTC [146] LOG:  execute <unnamed>: 
+	      SELECT SUM(CAST(fee AS DECIMAL)) AS total_fee
+	      FROM Transactions
+	      WHERE TO_CHAR(TO_DATE(date, 'YYYY-MM-DD'), 'YYYY-MM') = $1
+	    
+2025-05-01 15:43:28.114 UTC [146] DETAIL:  parameters: $1 = '2025-03'
+2025-05-01 15:43:29.374 UTC [148] LOG:  statement: 
+	      SELECT COUNT(DISTINCT name) AS total_users
+	      FROM Transactions
+	    
+2025-05-01 15:43:29.375 UTC [146] LOG:  execute <unnamed>: 
+	      SELECT 
+	        name,
+	        SUM(CASE WHEN type = 'Cash In' THEN 1 ELSE 0 END) AS cash_in_count,
+	        SUM(CASE WHEN type = 'Cash Out' THEN 1 ELSE 0 END) AS cash_out_count,
+	        SUM(CASE WHEN type = 'Load' THEN 1 ELSE 0 END) AS load_count,
+	        MAX(date) AS last_transaction
+	      FROM Transactions
+	      GROUP BY name
+	      ORDER BY name ASC
+	      LIMIT $1 OFFSET $2
+	    
+2025-05-01 15:43:29.375 UTC [146] DETAIL:  parameters: $1 = '10', $2 = '10'
+2025-05-01 15:43:30.422 UTC [148] LOG:  statement: 
+	      SELECT COUNT(DISTINCT name) AS total_users
+	      FROM Transactions
+	    
+2025-05-01 15:43:30.422 UTC [146] LOG:  execute <unnamed>: 
+	      SELECT 
+	        name,
+	        SUM(CASE WHEN type = 'Cash In' THEN 1 ELSE 0 END) AS cash_in_count,
+	        SUM(CASE WHEN type = 'Cash Out' THEN 1 ELSE 0 END) AS cash_out_count,
+	        SUM(CASE WHEN type = 'Load' THEN 1 ELSE 0 END) AS load_count,
+	        MAX(date) AS last_transaction
+	      FROM Transactions
+	      GROUP BY name
+	      ORDER BY name ASC
+	      LIMIT $1 OFFSET $2
+	    
+2025-05-01 15:43:30.422 UTC [146] DETAIL:  parameters: $1 = '10', $2 = '20'
+2025-05-01 15:43:31.076 UTC [146] LOG:  statement: 
+	      SELECT COUNT(DISTINCT name) AS total_users
+	      FROM Transactions
+	    
+2025-05-01 15:43:31.077 UTC [148] LOG:  execute <unnamed>: 
+	      SELECT 
+	        name,
+	        SUM(CASE WHEN type = 'Cash In' THEN 1 ELSE 0 END) AS cash_in_count,
+	        SUM(CASE WHEN type = 'Cash Out' THEN 1 ELSE 0 END) AS cash_out_count,
+	        SUM(CASE WHEN type = 'Load' THEN 1 ELSE 0 END) AS load_count,
+	        MAX(date) AS last_transaction
+	      FROM Transactions
+	      GROUP BY name
+	      ORDER BY name ASC
+	      LIMIT $1 OFFSET $2
+	    
+2025-05-01 15:43:31.077 UTC [148] DETAIL:  parameters: $1 = '10', $2 = '30'
+2025-05-01 15:43:32.197 UTC [146] LOG:  statement: 
+	      SELECT COUNT(DISTINCT name) AS total_users
+	      FROM Transactions
+	    
+2025-05-01 15:43:32.197 UTC [148] LOG:  execute <unnamed>: 
+	      SELECT 
+	        name,
+	        SUM(CASE WHEN type = 'Cash In' THEN 1 ELSE 0 END) AS cash_in_count,
+	        SUM(CASE WHEN type = 'Cash Out' THEN 1 ELSE 0 END) AS cash_out_count,
+	        SUM(CASE WHEN type = 'Load' THEN 1 ELSE 0 END) AS load_count,
+	        MAX(date) AS last_transaction
+	      FROM Transactions
+	      GROUP BY name
+	      ORDER BY name ASC
+	      LIMIT $1 OFFSET $2
+	    
+2025-05-01 15:43:32.197 UTC [148] DETAIL:  parameters: $1 = '10', $2 = '20'
+2025-05-01 15:43:34.081 UTC [146] LOG:  statement: 
+	      SELECT COUNT(DISTINCT name) AS total_users
+	      FROM Transactions
+	    
+2025-05-01 15:43:34.081 UTC [148] LOG:  execute <unnamed>: 
+	      SELECT 
+	        name,
+	        SUM(CASE WHEN type = 'Cash In' THEN 1 ELSE 0 END) AS cash_in_count,
+	        SUM(CASE WHEN type = 'Cash Out' THEN 1 ELSE 0 END) AS cash_out_count,
+	        SUM(CASE WHEN type = 'Load' THEN 1 ELSE 0 END) AS load_count,
+	        MAX(date) AS last_transaction
+	      FROM Transactions
+	      GROUP BY name
+	      ORDER BY name ASC
+	      LIMIT $1 OFFSET $2
+	    
+2025-05-01 15:43:34.081 UTC [148] DETAIL:  parameters: $1 = '10', $2 = '10'
+2025-05-01 15:43:34.944 UTC [146] LOG:  statement: 
+	      SELECT COUNT(DISTINCT name) AS total_users
+	      FROM Transactions
+	    
+2025-05-01 15:43:34.944 UTC [148] LOG:  execute <unnamed>: 
+	      SELECT 
+	        name,
+	        SUM(CASE WHEN type = 'Cash In' THEN 1 ELSE 0 END) AS cash_in_count,
+	        SUM(CASE WHEN type = 'Cash Out' THEN 1 ELSE 0 END) AS cash_out_count,
+	        SUM(CASE WHEN type = 'Load' THEN 1 ELSE 0 END) AS load_count,
+	        MAX(date) AS last_transaction
+	      FROM Transactions
+	      GROUP BY name
+	      ORDER BY name ASC
+	      LIMIT $1 OFFSET $2
+	    
+2025-05-01 15:43:34.944 UTC [148] DETAIL:  parameters: $1 = '10', $2 = '0'
+2025-05-01 15:44:45.052 UTC [1] LOG:  received fast shutdown request
+2025-05-01 15:44:45.056 UTC [1] LOG:  aborting any active transactions
+2025-05-01 15:44:45.058 UTC [1] LOG:  background worker "logical replication launcher" (PID 69) exited with exit code 1
+2025-05-01 15:44:45.058 UTC [64] LOG:  shutting down
+2025-05-01 15:44:45.061 UTC [64] LOG:  checkpoint starting: shutdown immediate
+2025-05-01 15:44:45.098 UTC [64] LOG:  checkpoint complete: wrote 146 buffers (0.9%); 0 WAL file(s) added, 0 removed, 0 recycled; write=0.009 s, sync=0.018 s, total=0.040 s; sync files=98, longest=0.003 s, average=0.001 s; distance=718 kB, estimate=718 kB; lsn=0/19C5B60, redo lsn=0/19C5B60
+2025-05-01 15:44:45.102 UTC [1] LOG:  database system is shut down

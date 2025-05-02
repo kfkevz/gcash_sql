@@ -1,0 +1,13 @@
+2025-05-01 15:55:28.811 UTC [49] LOG:  starting PostgreSQL 16.8 (Debian 16.8-1.pgdg120+1) on x86_64-pc-linux-gnu, compiled by gcc (Debian 12.2.0-14) 12.2.0, 64-bit
+2025-05-01 15:55:28.814 UTC [49] LOG:  listening on Unix socket "/var/run/postgresql/.s.PGSQL.5432"
+2025-05-01 15:55:28.824 UTC [53] LOG:  database system was shut down at 2025-05-01 15:55:28 UTC
+2025-05-01 15:55:28.830 UTC [49] LOG:  database system is ready to accept connections
+2025-05-01 15:55:28.969 UTC [59] LOG:  statement: SELECT 1 FROM pg_database WHERE datname = 'gcash_db' ;
+2025-05-01 15:55:28.998 UTC [61] LOG:  statement: CREATE DATABASE "gcash_db" ;
+2025-05-01 15:55:29.077 UTC [49] LOG:  received fast shutdown request
+2025-05-01 15:55:29.080 UTC [49] LOG:  aborting any active transactions
+2025-05-01 15:55:29.081 UTC [49] LOG:  background worker "logical replication launcher" (PID 56) exited with exit code 1
+2025-05-01 15:55:29.082 UTC [51] LOG:  shutting down
+2025-05-01 15:55:29.086 UTC [51] LOG:  checkpoint starting: shutdown immediate
+2025-05-01 15:55:29.184 UTC [51] LOG:  checkpoint complete: wrote 922 buffers (5.6%); 0 WAL file(s) added, 0 removed, 0 recycled; write=0.030 s, sync=0.057 s, total=0.103 s; sync files=301, longest=0.005 s, average=0.001 s; distance=4255 kB, estimate=4255 kB; lsn=0/1912100, redo lsn=0/1912100
+2025-05-01 15:55:29.191 UTC [49] LOG:  database system is shut down

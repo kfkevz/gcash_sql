@@ -33,7 +33,7 @@ const pool = new Pool({
 
 pool.connect((err) => {
   if (err) {
-    console.error('Failed to connectidedb connect to PostgreSQL:', err.message);
+    console.error('Failed to connect to PostgreSQL:', err.message);
     process.exit(1);
   }
   console.log('Successfully connected to PostgreSQL');
@@ -41,16 +41,40 @@ pool.connect((err) => {
 
 async function initializeDatabase() {
   try {
-    await pool.query(`
-      DO $$ 
-      BEGIN
-        IF EXISTS (SELECT 1 FROM pg_type WHERE typname = 'transaction_type') THEN
-          DROP TYPE transaction_type CASCADE;
-        END IF;
-        CREATE TYPE transaction_type AS ENUM ('Cash In', 'Cash Out', 'Load');
-      END $$;
+    // Check if transaction_type ENUM exists and has correct values
+    const enumCheck = await pool.query(`
+      SELECT EXISTS (
+        SELECT 1 FROM pg_type WHERE typname = 'transaction_type'
+      ) AS type_exists;
     `);
 
+    if (enumCheck.rows[0].type_exists) {
+      // Verify ENUM values
+      const enumValues = await pool.query(`
+        SELECT e.enumlabel
+        FROM pg_enum e
+        JOIN pg_type t ON e.enumtypid = t.oid
+        WHERE t.typname = 'transaction_type'
+        ORDER BY e.enumsortorder;
+      `);
+      const expectedValues = ['Cash In', 'Cash Out', 'Load'];
+      const currentValues = enumValues.rows.map(row => row.enumlabel);
+      
+      if (JSON.stringify(currentValues) !== JSON.stringify(expectedValues)) {
+        // Drop and recreate ENUM only if values are incorrect
+        await pool.query(`
+          DROP TYPE transaction_type CASCADE;
+          CREATE TYPE transaction_type AS ENUM ('Cash In', 'Cash Out', 'Load');
+        `);
+      }
+    } else {
+      // Create ENUM if it doesn't exist
+      await pool.query(`
+        CREATE TYPE transaction_type AS ENUM ('Cash In', 'Cash Out', 'Load');
+      `);
+    }
+
+    // Create Transactions table if it doesn't exist
     await pool.query(`
       CREATE TABLE IF NOT EXISTS Transactions (
         id SERIAL PRIMARY KEY,
@@ -67,6 +91,7 @@ async function initializeDatabase() {
       );
     `);
 
+    // Add created_at and updated_at columns if they don't exist
     await pool.query(`
       DO $$ 
       BEGIN
@@ -81,6 +106,7 @@ async function initializeDatabase() {
       END $$;
     `);
 
+    // Create CurrentBalance table if it doesn't exist
     await pool.query(`
       CREATE TABLE IF NOT EXISTS CurrentBalance (
         id SERIAL PRIMARY KEY,
@@ -88,6 +114,7 @@ async function initializeDatabase() {
       );
     `);
 
+    // Initialize CurrentBalance if empty
     const balanceCheck = await pool.query('SELECT * FROM CurrentBalance');
     if (balanceCheck.rows.length === 0) {
       await pool.query('INSERT INTO CurrentBalance (balance) VALUES (0.00)');
@@ -536,7 +563,6 @@ app.get('/api/backup', async (req, res) => {
         console.error('Error sending backup file:', err);
         res.status(500).json({ error: 'Failed to download backup file' });
       }
-      // Note: File is retained on the host (fs.unlink removed previously)
       console.log(`Backup file retained at: ${backupFilePath}`);
     });
   } catch (error) {
@@ -554,16 +580,9 @@ app.post('/api/restore', upload.single('backupFile'), async (req, res) => {
 
     const backupFilePath = req.file.path;
 
-    // Drop and recreate the database to ensure a clean restore
-    await pool.query('DROP SCHEMA public CASCADE');
-    await pool.query('CREATE SCHEMA public');
-
-    // Restore the database using psql
+    // Restore the database using psql without dropping the schema
     const psqlCommand = `psql -h postgres -U kfa -d gcash_db < ${backupFilePath}`;
     await execPromise(psqlCommand, { env: { ...process.env, PGPASSWORD: 'root' } });
-
-    // Reinitialize the database to ensure schema consistency
-    await initializeDatabase();
 
     // Clean up the uploaded file
     fs.unlink(backupFilePath, (unlinkErr) => {
@@ -574,6 +593,141 @@ app.post('/api/restore', upload.single('backupFile'), async (req, res) => {
   } catch (error) {
     console.error('Error restoring database:', error);
     res.status(500).json({ error: 'Failed to restore database' });
+  }
+});
+
+// New Endpoint: Transaction Trends (Last 7 Days)
+app.get('/api/reports/trend', async (req, res) => {
+  try {
+    const days = parseInt(req.query.days) || 7;
+    const today = new Date();
+    const dates = [];
+    const results = [];
+
+    // Generate the last `days` dates
+    for (let i = days - 1; i >= 0; i--) {
+      const date = new Date(today);
+      date.setDate(today.getDate() - i);
+      const dateStr = date.toISOString().split('T')[0]; // YYYY-MM-DD
+      dates.push(dateStr);
+      results.push({ date: dateStr, totalAmount: 0 });
+    }
+
+    // Query transactions for the last `days` days
+    const query = `
+      SELECT date, SUM(CAST(amount AS DECIMAL)) as total_amount
+      FROM Transactions
+      WHERE date >= $1
+      GROUP BY date
+      ORDER BY date ASC
+    `;
+    const startDate = new Date(today);
+    startDate.setDate(today.getDate() - (days - 1));
+    const startDateStr = startDate.toISOString().split('T')[0];
+    const queryResult = await pool.query(query, [startDateStr]);
+
+    // Map the results to the dates array
+    queryResult.rows.forEach(row => {
+      const index = dates.indexOf(row.date);
+      if (index !== -1) {
+        results[index].totalAmount = parseFloat(row.total_amount) || 0;
+      }
+    });
+
+    res.status(200).json(results);
+  } catch (error) {
+    console.error('Error fetching trend data:', error);
+    res.status(500).json({ error: 'Failed to fetch trend data' });
+  }
+});
+
+// New Endpoint: Transaction Type Breakdown
+app.get('/api/reports/type-breakdown', async (req, res) => {
+  try {
+    const query = `
+      SELECT type, COUNT(*) as count
+      FROM Transactions
+      GROUP BY type
+    `;
+    const result = await pool.query(query);
+
+    const breakdown = {
+      "Cash In": 0,
+      "Cash Out": 0,
+      "Load": 0
+    };
+    result.rows.forEach(row => {
+      if (breakdown.hasOwnProperty(row.type)) {
+        breakdown[row.type] = parseInt(row.count);
+      }
+    });
+
+    res.status(200).json(breakdown);
+  } catch (error) {
+    console.error('Error fetching type breakdown:', error);
+    res.status(500).json({ error: 'Failed to fetch type breakdown' });
+  }
+});
+
+// Updated Endpoint: User Transactions Report with Pagination and Search
+app.get('/api/reports/user-transactions', async (req, res) => {
+  try {
+    const page = parseInt(req.query.page) || 1;
+    const limit = parseInt(req.query.limit) || 10;
+    const search = req.query.search || '';
+    const offset = (page - 1) * limit;
+
+    // Query for paginated user transactions with optional search
+    let query = `
+      SELECT 
+        name,
+        SUM(CASE WHEN type = 'Cash In' THEN 1 ELSE 0 END) AS cash_in_count,
+        SUM(CASE WHEN type = 'Cash Out' THEN 1 ELSE 0 END) AS cash_out_count,
+        SUM(CASE WHEN type = 'Load' THEN 1 ELSE 0 END) AS load_count,
+        MAX(date) AS last_transaction
+      FROM Transactions
+    `;
+    let countQuery = `
+      SELECT COUNT(DISTINCT name) AS total_users
+      FROM Transactions
+    `;
+    const queryParams = [];
+    const countParams = [];
+
+    if (search) {
+      query += ` WHERE name ILIKE $1`;
+      countQuery += ` WHERE name ILIKE $1`;
+      queryParams.push(`%${search}%`);
+      countParams.push(`%${search}%`);
+    }
+
+    query += `
+      GROUP BY name
+      ORDER BY name ASC
+      LIMIT $${queryParams.length + 1} OFFSET $${queryParams.length + 2}
+    `;
+    queryParams.push(limit, offset);
+
+    // Execute queries
+    const [result, countResult] = await Promise.all([
+      pool.query(query, queryParams),
+      pool.query(countQuery, countParams)
+    ]);
+
+    const userTransactions = result.rows.map(row => ({
+      name: row.name,
+      cashIn: parseInt(row.cash_in_count),
+      cashOut: parseInt(row.cash_out_count),
+      load: parseInt(row.load_count),
+      lastTransaction: row.last_transaction
+    }));
+
+    const totalUsers = parseInt(countResult.rows[0].total_users) || 0;
+
+    res.status(200).json({ userTransactions, totalUsers });
+  } catch (error) {
+    console.error('Error fetching user transactions:', error);
+    res.status(500).json({ error: 'Failed to fetch user transactions' });
   }
 });
 

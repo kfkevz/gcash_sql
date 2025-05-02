@@ -349,6 +349,50 @@
       font-weight: normal;
       color: #666;
     }
+    .user-search {
+      margin-bottom: 15px;
+    }
+    .user-search label {
+      display: block;
+      font-size: 14px;
+      color: #333;
+      margin-bottom: 5px;
+    }
+    .user-search input {
+      width: 100%;
+      max-width: 300px;
+      padding: 5px;
+      border: 1px solid #ccc;
+      border-radius: 3px;
+      font-size: 14px;
+      box-sizing: border-box;
+    }
+    .pagination {
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      gap: 10px;
+      margin-top: 10px;
+    }
+    .pagination button {
+      padding: 5px 10px;
+      border: none;
+      border-radius: 3px;
+      font-size: 14px;
+      cursor: pointer;
+      background-color: #007bff;
+      color: white;
+    }
+    .pagination button:disabled {
+      background-color: #ccc;
+      cursor: not-allowed;
+    }
+    .pagination button:hover:not(:disabled) {
+      background-color: #0056b3;
+    }
+    .pagination span {
+      font-size: 14px;
+    }
     .fee-comparison {
       display: flex;
       gap: 20px;
@@ -406,6 +450,22 @@
     .remarks-load { background-color: #FFDAB9; }
     .remarks-cuana { background-color: #FFFF00; }
     .remarks-unpaid { background-color: #FFCCCB; }
+    .chart-container {
+      display: flex;
+      gap: 20px;
+      flex-wrap: wrap;
+      justify-content: space-between;
+    }
+    .chart-container .trend-chart {
+      flex: 2;
+      min-width: 300px;
+    }
+    .chart-container .type-breakdown-chart {
+      flex: 1;
+      min-width: 250px;
+      max-width: 300px;
+      margin: 0 auto;
+    }
   </style>
 </head>
 <body>
@@ -627,6 +687,17 @@
             </table>
           </div>
         </div>
+
+        <div class="chart-container">
+          <div class="reports-section trend-chart">
+            <h2>Transaction Trends (Last 7 Days)</h2>
+            <canvas id="trendChart"></canvas>
+          </div>
+          <div class="reports-section type-breakdown-chart">
+            <h2>Transaction Type Breakdown</h2>
+            <canvas id="typeBreakdownChart"></canvas>
+          </div>
+        </div>
       </div>
 
       <div id="transactions-section" class="content-section">
@@ -701,6 +772,31 @@
 
       <div id="reports-section" class="content-section">
         <div class="reports-section">
+          <h2>User Transactions Report</h2>
+          <div class="user-search">
+            <label>Search by Name:</label>
+            <input type="text" id="userSearch" placeholder="Enter name to filter">
+          </div>
+          <table>
+            <thead>
+              <tr>
+                <th>Name</th>
+                <th>Cash In</th>
+                <th>Cash Out</th>
+                <th>Load</th>
+                <th>Last Transaction</th>
+              </tr>
+            </thead>
+            <tbody id="userTransactionsTable">
+            </tbody>
+          </table>
+          <div class="pagination">
+            <button id="userPrevPage" onclick="prevUserPage()">Previous</button>
+            <span id="userPageNumber">Page 1</span>
+            <button id="userNextPage" onclick="nextUserPage()">Next</button>
+          </div>
+        </div>
+        <div class="reports-section">
           <h2>Monthly Transaction Reports</h2>
           <table>
             <thead>
@@ -744,9 +840,22 @@
   </div>
 
   <script>
-    const today = '2025-04-29';
+    let currentUserPage = 1;
+    const usersPerPage = 10;
+
+    function getManilaDate() {
+      const now = new Date();
+      const manilaTime = new Intl.DateTimeFormat('en-CA', {
+        timeZone: 'Asia/Manila',
+        year: 'numeric',
+        month: '2-digit',
+        day: '2-digit'
+      }).format(now);
+      return manilaTime; // Returns YYYY-MM-DD format
+    }
 
     function setTodayDate() {
+      const today = getManilaDate();
       document.getElementById('date').value = today;
       document.getElementById('fetchDate').value = today;
     }
@@ -760,9 +869,12 @@
       if (section === 'dashboard') {
         fetchBalance();
         fetchTransactions();
+        fetchTransactionTrends();
+        fetchTypeBreakdown();
       } else if (section === 'transactions') {
         fetchTransactions();
       } else if (section === 'reports') {
+        fetchUserTransactions();
         fetchMonthlyTransactions();
         fetchFeeComparison();
       }
@@ -773,6 +885,15 @@
       fetchBalance();
       fetchTransactions();
       fetchLatestTransaction();
+      fetchTransactionTrends();
+      fetchTypeBreakdown();
+
+      // Add event listener for user search input
+      const userSearchInput = document.getElementById('userSearch');
+      userSearchInput.addEventListener('input', () => {
+        currentUserPage = 1; // Reset to first page on search
+        fetchUserTransactions();
+      });
     };
 
     async function fetchBalance() {
@@ -844,7 +965,7 @@
     }
 
     async function fetchTransactions() {
-      const date = document.getElementById('fetchDate').value || today;
+      const date = document.getElementById('fetchDate').value || getManilaDate();
       const searchField = document.getElementById('searchField').value;
       const searchKeyword = document.getElementById('searchKeyword').value;
       const url = new URL('http://localhost:5000/api/transactions');
@@ -904,6 +1025,56 @@
       } catch (error) {
         console.error('Error fetching transactions:', error);
       }
+    }
+
+    async function fetchUserTransactions(page = currentUserPage) {
+      try {
+        const url = new URL('http://localhost:5000/api/reports/user-transactions');
+        url.searchParams.append('page', page);
+        url.searchParams.append('limit', usersPerPage);
+        const searchTerm = document.getElementById('userSearch').value.trim();
+        if (searchTerm) {
+          url.searchParams.append('search', searchTerm);
+        }
+
+        const response = await fetch(url);
+        const data = await response.json();
+        const userTransactions = data.userTransactions || [];
+        const totalUsers = data.totalUsers || 0;
+
+        const tableBody = document.getElementById('userTransactionsTable');
+        tableBody.innerHTML = '';
+        userTransactions.forEach(user => {
+          const row = document.createElement('tr');
+          row.innerHTML = `
+            <td>${user.name}</td>
+            <td>${user.cashIn}</td>
+            <td>${user.cashOut}</td>
+            <td>${user.load}</td>
+            <td>${user.lastTransaction || '-'}</td>
+          `;
+          tableBody.appendChild(row);
+        });
+
+        // Update pagination controls
+        const totalPages = Math.ceil(totalUsers / usersPerPage);
+        currentUserPage = page;
+        document.getElementById('userPageNumber').textContent = `Page ${currentUserPage}`;
+        document.getElementById('userPrevPage').disabled = currentUserPage === 1;
+        document.getElementById('userNextPage').disabled = currentUserPage === totalPages || totalPages === 0;
+      } catch (error) {
+        console.error('Error fetching user transactions:', error);
+      }
+    }
+
+    function prevUserPage() {
+      if (currentUserPage > 1) {
+        fetchUserTransactions(currentUserPage - 1);
+      }
+    }
+
+    function nextUserPage() {
+      fetchUserTransactions(currentUserPage + 1);
     }
 
     async function fetchMonthlyTransactions() {
@@ -980,6 +1151,100 @@
       }
     }
 
+    let trendChart = null;
+
+    async function fetchTransactionTrends() {
+      try {
+        const response = await fetch('http://localhost:5000/api/reports/trend?days=7');
+        const data = await response.json();
+        const labels = data.map(item => item.date);
+        const amounts = data.map(item => item.totalAmount);
+
+        if (trendChart) {
+          trendChart.destroy();
+        }
+
+        const ctx = document.getElementById('trendChart').getContext('2d');
+        trendChart = new Chart(ctx, {
+          type: 'line',
+          data: {
+            labels: labels,
+            datasets: [{
+              label: 'Total Amount (PHP)',
+              data: amounts,
+              borderColor: '#007bff',
+              backgroundColor: 'rgba(0, 123, 255, 0.1)',
+              fill: true,
+              tension: 0.3
+            }]
+          },
+          options: {
+            scales: {
+              y: {
+                beginAtZero: true,
+                title: {
+                  display: true,
+                  text: 'Amount (PHP)'
+                }
+              },
+              x: {
+                title: {
+                  display: true,
+                  text: 'Date'
+                }
+              }
+            },
+            plugins: {
+              legend: {
+                display: true,
+                position: 'top'
+              }
+            }
+          }
+        });
+      } catch (error) {
+        console.error('Error fetching transaction trends:', error);
+      }
+    }
+
+    let typeBreakdownChart = null;
+
+    async function fetchTypeBreakdown() {
+      try {
+        const response = await fetch('http://localhost:5000/api/reports/type-breakdown');
+        const data = await response.json();
+        const labels = Object.keys(data);
+        const values = Object.values(data);
+
+        if (typeBreakdownChart) {
+          typeBreakdownChart.destroy();
+        }
+
+        const ctx = document.getElementById('typeBreakdownChart').getContext('2d');
+        typeBreakdownChart = new Chart(ctx, {
+          type: 'pie',
+          data: {
+            labels: labels,
+            datasets: [{
+              data: values,
+              backgroundColor: ['#007bff', '#28a745', '#dc3545'],
+              borderColor: ['#0056b3', '#218838', '#c82333'],
+              borderWidth: 1
+            }]
+          },
+          options: {
+            plugins: {
+              legend: {
+                position: 'bottom'
+              }
+            }
+          }
+        });
+      } catch (error) {
+        console.error('Error fetching type breakdown:', error);
+      }
+    }
+
     async function saveTransaction() {
       const id = document.getElementById('transactionId').value;
       const transaction = {
@@ -1008,6 +1273,9 @@
           clearForm();
           fetchTransactions();
           fetchBalance();
+          fetchTransactionTrends();
+          fetchTypeBreakdown();
+          fetchUserTransactions(); // Refresh user transactions to reflect new data
           const timeField = document.getElementById('time');
           timeField.focus();
           timeField.select();
@@ -1040,6 +1308,7 @@
         }
       } catch (error) {
         console.error('Error fetching transaction for edit:', error);
+        alert('Failed to fetch transaction for editing');
       }
     }
 
@@ -1054,6 +1323,9 @@
           alert('Transaction deleted successfully');
           fetchTransactions();
           fetchBalance();
+          fetchTransactionTrends();
+          fetchTypeBreakdown();
+          fetchUserTransactions(); // Refresh user transactions to reflect deletion
         }
       } catch (error) {
         console.error('Error deleting transaction:', error);
@@ -1064,18 +1336,18 @@
     function clearForm() {
       document.getElementById('transactionForm').reset();
       document.getElementById('transactionId').value = '';
-      document.getElementById('date').value = today;
+      document.getElementById('date').value = getManilaDate();
     }
 
     function clearSearch() {
-      document.getElementById('fetchDate').value = today;
+      document.getElementById('fetchDate').value = getManilaDate();
       document.getElementById('searchField').value = 'id';
       document.getElementById('searchKeyword').value = '';
       fetchTransactions();
     }
 
     async function downloadSummary() {
-      const date = document.getElementById('fetchDate').value || today;
+      const date = document.getElementById('fetchDate').value || getManilaDate();
       const sortBy = document.getElementById('sortBy').value;
       if (!date) {
         alert('Please select a date to download the summary.');
@@ -1097,12 +1369,9 @@
           throw new Error(data.error || 'Failed to create backup');
         }
 
-        // Get the file blob from the response
         const blob = await response.blob();
         const contentDisposition = response.headers.get('Content-Disposition');
-        let fileName = 'gcash_backup_default.sql'; // Fallback filename
-
-        // Extract filename from Content-Disposition header
+        let fileName = 'gcash_backup.sql';
         if (contentDisposition) {
           const fileNameMatch = contentDisposition.match(/filename="(.+)"/);
           if (fileNameMatch && fileNameMatch[1]) {
@@ -1110,20 +1379,19 @@
           }
         }
 
-        // Create a temporary URL for the blob and trigger download
         const url = window.URL.createObjectURL(blob);
-        const link = document.createElement('a');
-        link.href = url;
-        link.download = fileName;
-        document.body.appendChild(link);
-        link.click();
-        document.body.removeChild(link);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = fileName;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
         window.URL.revokeObjectURL(url);
 
         alert('Backup created successfully');
       } catch (error) {
         console.error('Error creating backup:', error);
-        alert('Failed to create backup: ' + error.message);
+        alert('Failed to create backup');
       }
     }
 
@@ -1131,11 +1399,7 @@
       const fileInput = document.getElementById('restoreFile');
       const file = fileInput.files[0];
       if (!file) {
-        alert('Please select a backup file to restore');
-        return;
-      }
-
-      if (!confirm('Are you sure you want to restore the database? This will overwrite all current data.')) {
+        alert('Please select a backup file to restore.');
         return;
       }
 
@@ -1150,18 +1414,18 @@
         const data = await response.json();
         if (data.message) {
           alert('Database restored successfully');
-          fileInput.value = ''; // Clear the file input
+          fileInput.value = '';
           fetchBalance();
           fetchTransactions();
-          fetchLatestTransaction();
+          fetchTransactionTrends();
+          fetchTypeBreakdown();
+          fetchUserTransactions();
           fetchMonthlyTransactions();
           fetchFeeComparison();
-        } else {
-          throw new Error(data.error || 'Failed to restore database');
         }
       } catch (error) {
         console.error('Error restoring database:', error);
-        alert('Failed to restore database: ' + error.message);
+        alert('Failed to restore database');
       }
     }
   </script>
