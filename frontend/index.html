@@ -466,6 +466,20 @@
       max-width: 300px;
       margin: 0 auto;
     }
+    .trend-controls button.prev-btn,
+    .trend-controls button.next-btn {
+      padding: 5px 10px;
+      background-color: #007bff;
+      color: white;
+      border: none;
+      border-radius: 3px;
+      font-size: 14px;
+      cursor: pointer;
+    }
+    .trend-controls button.prev-btn:hover,
+    .trend-controls button.next-btn:hover {
+      background-color: #0056b3;
+    }
   </style>
 </head>
 <body>
@@ -690,7 +704,19 @@
 
         <div class="chart-container">
           <div class="reports-section trend-chart">
-            <h2>Transaction Trends (Last 7 Days)</h2>
+            <h2>Transaction Trends</h2>
+            <div class="trend-controls" style="display: flex; gap: 10px; align-items: flex-end; margin-bottom: 15px;">
+              <div>
+                <label>Start Date:</label>
+                <input type="date" id="trendStartDate" onchange="fetchTransactionTrends()">
+              </div>
+              <div>
+                <label>End Date:</label>
+                <input type="date" id="trendEndDate" onchange="fetchTransactionTrends()">
+              </div>
+              <button onclick="shiftTrendRange('prev')" class="prev-btn">Previous</button>
+              <button onclick="shiftTrendRange('next')" class="next-btn">Next</button>
+            </div>
             <canvas id="trendChart"></canvas>
           </div>
           <div class="reports-section type-breakdown-chart">
@@ -842,6 +868,9 @@
   <script>
     let currentUserPage = 1;
     const usersPerPage = 10;
+    let trendChart = null;
+    let typeBreakdownChart = null;
+    let feeChart = null;
 
     function getManilaDate() {
       const now = new Date();
@@ -858,6 +887,16 @@
       const today = getManilaDate();
       document.getElementById('date').value = today;
       document.getElementById('fetchDate').value = today;
+    }
+
+    function initializeTrendDates() {
+      const today = new Date();
+      const endDate = getManilaDate();
+      const startDate = new Date(today);
+      startDate.setDate(today.getDate() - 6); // Default to 7 days including today
+      const startDateStr = startDate.toISOString().split('T')[0];
+      document.getElementById('trendStartDate').value = startDateStr;
+      document.getElementById('trendEndDate').value = endDate;
     }
 
     function showSection(section) {
@@ -882,16 +921,16 @@
 
     window.onload = () => {
       setTodayDate();
+      initializeTrendDates();
       fetchBalance();
       fetchTransactions();
       fetchLatestTransaction();
       fetchTransactionTrends();
       fetchTypeBreakdown();
 
-      // Add event listener for user search input
       const userSearchInput = document.getElementById('userSearch');
       userSearchInput.addEventListener('input', () => {
-        currentUserPage = 1; // Reset to first page on search
+        currentUserPage = 1;
         fetchUserTransactions();
       });
     };
@@ -931,6 +970,43 @@
       } catch (error) {
         console.error('Error setting balance:', error);
         alert('Failed to set balance');
+      }
+    }
+
+    async function saveTransaction() {
+      const id = document.getElementById('transactionId').value;
+      const transaction = {
+        date: document.getElementById('date').value,
+        time: document.getElementById('time').value,
+        type: document.getElementById('type').value,
+        amount: document.getElementById('amount').value,
+        name: document.getElementById('name').value,
+        ref: document.getElementById('ref').value,
+        fee: document.getElementById('fee').value,
+        remarks: document.getElementById('remarks').value
+      };
+
+      const url = id ? `http://localhost:5000/api/transactions/${id}` : 'http://localhost:5000/api/transactions';
+      const method = id ? 'PUT' : 'POST';
+
+      try {
+        const response = await fetch(url, {
+          method,
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(transaction),
+        });
+        const data = await response.json();
+        if (data.message) {
+          alert(id ? 'Transaction updated successfully' : 'Transaction saved successfully');
+          document.getElementById('transactionForm').reset();
+          document.getElementById('transactionId').value = '';
+          document.getElementById('date').value = getManilaDate();
+          fetchTransactions();
+          fetchBalance();
+        }
+      } catch (error) {
+        console.error('Error saving transaction:', error);
+        alert('Failed to save transaction');
       }
     }
 
@@ -1027,6 +1103,82 @@
       }
     }
 
+    async function editTransaction(id) {
+      try {
+        const response = await fetch(`http://localhost:5000/api/transactions?searchField=id&search=${id}`);
+        const data = await response.json();
+        const transaction = data.transactions[0];
+
+        if (transaction) {
+          document.getElementById('transactionId').value = transaction.id;
+          document.getElementById('date').value = transaction.date;
+          document.getElementById('time').value = transaction.time;
+          document.getElementById('type').value = transaction.type;
+          document.getElementById('amount').value = transaction.amount;
+          document.getElementById('name').value = transaction.name;
+          document.getElementById('ref').value = transaction.ref;
+          document.getElementById('fee').value = transaction.fee;
+          document.getElementById('remarks').value = transaction.remarks;
+          document.getElementById('transactionForm').querySelector('button').textContent = 'Update Transaction';
+          showSection('dashboard');
+        }
+      } catch (error) {
+        console.error('Error fetching transaction for edit:', error);
+      }
+    }
+
+    async function deleteTransaction(id) {
+      if (!confirm('Are you sure you want to delete this transaction?')) return;
+
+      try {
+        const response = await fetch(`http://localhost:5000/api/transactions/${id}`, {
+          method: 'DELETE',
+        });
+        const data = await response.json();
+        if (data.message) {
+          alert('Transaction deleted successfully');
+          fetchTransactions();
+          fetchBalance();
+        }
+      } catch (error) {
+        console.error('Error deleting transaction:', error);
+        alert('Failed to delete transaction');
+      }
+    }
+
+    function clearSearch() {
+      document.getElementById('searchKeyword').value = '';
+      document.getElementById('searchField').value = 'id';
+      fetchTransactions();
+    }
+
+    async function downloadSummary() {
+      const date = document.getElementById('fetchDate').value || getManilaDate();
+      const sortBy = document.getElementById('sortBy').value;
+
+      try {
+        const url = new URL('http://localhost:5000/api/transactions/download');
+        url.searchParams.append('date', date);
+        if (sortBy && sortBy !== 'id') {
+          url.searchParams.append('sortBy', sortBy);
+        }
+
+        const response = await fetch(url);
+        const blob = await response.blob();
+        const urlObject = window.URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = urlObject;
+        a.download = `transaction-summary-${date}.pdf`;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        window.URL.revokeObjectURL(urlObject);
+      } catch (error) {
+        console.error('Error downloading summary:', error);
+        alert('Failed to download summary');
+      }
+    }
+
     async function fetchUserTransactions(page = currentUserPage) {
       try {
         const url = new URL('http://localhost:5000/api/reports/user-transactions');
@@ -1056,7 +1208,6 @@
           tableBody.appendChild(row);
         });
 
-        // Update pagination controls
         const totalPages = Math.ceil(totalUsers / usersPerPage);
         currentUserPage = page;
         document.getElementById('userPageNumber').textContent = `Page ${currentUserPage}`;
@@ -1099,8 +1250,6 @@
         console.error('Error fetching monthly transactions:', error);
       }
     }
-
-    let feeChart = null;
 
     async function fetchFeeComparison() {
       try {
@@ -1151,11 +1300,25 @@
       }
     }
 
-    let trendChart = null;
-
     async function fetchTransactionTrends() {
       try {
-        const response = await fetch('http://localhost:5000/api/reports/trend?days=7');
+        const startDate = document.getElementById('trendStartDate').value;
+        const endDate = document.getElementById('trendEndDate').value;
+
+        if (!startDate || !endDate) {
+          alert('Please select both start and end dates.');
+          return;
+        }
+        if (new Date(startDate) > new Date(endDate)) {
+          alert('Start date cannot be later than end date.');
+          return;
+        }
+
+        const url = new URL('http://localhost:5000/api/reports/trend');
+        url.searchParams.append('startDate', startDate);
+        url.searchParams.append('endDate', endDate);
+
+        const response = await fetch(url);
         const data = await response.json();
         const labels = data.map(item => item.date);
         const amounts = data.map(item => item.totalAmount);
@@ -1202,12 +1365,41 @@
             }
           }
         });
+
+        document.querySelector('.trend-chart h2').textContent = `Transaction Trends (${startDate} to ${endDate})`;
       } catch (error) {
         console.error('Error fetching transaction trends:', error);
       }
     }
 
-    let typeBreakdownChart = null;
+    function shiftTrendRange(direction) {
+      const startDateInput = document.getElementById('trendStartDate');
+      const endDateInput = document.getElementById('trendEndDate');
+      const startDate = new Date(startDateInput.value);
+      const endDate = new Date(endDateInput.value);
+
+      const timeDiff = endDate - startDate;
+      const daysDiff = Math.ceil(timeDiff / (1000 * 60 * 60 * 24)) + 1;
+
+      if (direction === 'prev') {
+        startDate.setDate(startDate.getDate() - daysDiff);
+        endDate.setDate(endDate.getDate() - daysDiff);
+      } else if (direction === 'next') {
+        startDate.setDate(startDate.getDate() + daysDiff);
+        endDate.setDate(endDate.getDate() + daysDiff);
+      }
+
+      const today = new Date(getManilaDate());
+      if (endDate > today) {
+        endDate.setDate(today.getDate());
+        startDate.setDate(endDate.getDate() - (daysDiff - 1));
+      }
+
+      startDateInput.value = startDate.toISOString().split('T')[0];
+      endDateInput.value = endDate.toISOString().split('T')[0];
+
+      fetchTransactionTrends();
+    }
 
     async function fetchTypeBreakdown() {
       try {
@@ -1245,149 +1437,18 @@
       }
     }
 
-    async function saveTransaction() {
-      const id = document.getElementById('transactionId').value;
-      const transaction = {
-        date: document.getElementById('date').value,
-        time: document.getElementById('time').value,
-        type: document.getElementById('type').value,
-        amount: document.getElementById('amount').value,
-        name: document.getElementById('name').value,
-        ref: document.getElementById('ref').value,
-        fee: document.getElementById('fee').value,
-        remarks: document.getElementById('remarks').value,
-      };
-
-      const method = id ? 'PUT' : 'POST';
-      const url = id ? `http://localhost:5000/api/transactions/${id}` : 'http://localhost:5000/api/transactions';
-
-      try {
-        const response = await fetch(url, {
-          method,
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(transaction),
-        });
-        const data = await response.json();
-        if (data.message) {
-          alert(`Transaction ${id ? 'updated' : 'saved'} successfully`);
-          clearForm();
-          fetchTransactions();
-          fetchBalance();
-          fetchTransactionTrends();
-          fetchTypeBreakdown();
-          fetchUserTransactions(); // Refresh user transactions to reflect new data
-          const timeField = document.getElementById('time');
-          timeField.focus();
-          timeField.select();
-        }
-      } catch (error) {
-        console.error('Error saving transaction:', error);
-        alert('Failed to save transaction');
-      }
-    }
-
-    async function editTransaction(id) {
-      try {
-        const response = await fetch(`http://localhost:5000/api/transactions?searchField=id&search=${id}`);
-        const data = await response.json();
-        const txn = data.transactions[0];
-        if (txn) {
-          document.getElementById('transactionId').value = txn.id;
-          document.getElementById('date').value = txn.date;
-          document.getElementById('time').value = txn.time;
-          document.getElementById('type').value = txn.type;
-          document.getElementById('amount').value = txn.amount;
-          document.getElementById('name').value = txn.name;
-          document.getElementById('ref').value = txn.ref;
-          document.getElementById('fee').value = txn.fee;
-          document.getElementById('remarks').value = txn.remarks;
-          showSection('dashboard');
-          const timeField = document.getElementById('time');
-          timeField.focus();
-          timeField.select();
-        }
-      } catch (error) {
-        console.error('Error fetching transaction for edit:', error);
-        alert('Failed to fetch transaction for editing');
-      }
-    }
-
-    async function deleteTransaction(id) {
-      if (!confirm('Are you sure you want to delete this transaction?')) return;
-      try {
-        const response = await fetch(`http://localhost:5000/api/transactions/${id}`, {
-          method: 'DELETE',
-        });
-        const data = await response.json();
-        if (data.message) {
-          alert('Transaction deleted successfully');
-          fetchTransactions();
-          fetchBalance();
-          fetchTransactionTrends();
-          fetchTypeBreakdown();
-          fetchUserTransactions(); // Refresh user transactions to reflect deletion
-        }
-      } catch (error) {
-        console.error('Error deleting transaction:', error);
-        alert('Failed to delete transaction');
-      }
-    }
-
-    function clearForm() {
-      document.getElementById('transactionForm').reset();
-      document.getElementById('transactionId').value = '';
-      document.getElementById('date').value = getManilaDate();
-    }
-
-    function clearSearch() {
-      document.getElementById('fetchDate').value = getManilaDate();
-      document.getElementById('searchField').value = 'id';
-      document.getElementById('searchKeyword').value = '';
-      fetchTransactions();
-    }
-
-    async function downloadSummary() {
-      const date = document.getElementById('fetchDate').value || getManilaDate();
-      const sortBy = document.getElementById('sortBy').value;
-      if (!date) {
-        alert('Please select a date to download the summary.');
-        return;
-      }
-
-      const url = new URL('http://localhost:5000/api/transactions/download');
-      url.searchParams.append('date', date);
-      if (sortBy !== 'id') url.searchParams.append('sortBy', sortBy);
-
-      window.location.href = url;
-    }
-
     async function backupDatabase() {
       try {
         const response = await fetch('http://localhost:5000/api/backup');
-        if (!response.ok) {
-          const data = await response.json();
-          throw new Error(data.error || 'Failed to create backup');
-        }
-
         const blob = await response.blob();
-        const contentDisposition = response.headers.get('Content-Disposition');
-        let fileName = 'gcash_backup.sql';
-        if (contentDisposition) {
-          const fileNameMatch = contentDisposition.match(/filename="(.+)"/);
-          if (fileNameMatch && fileNameMatch[1]) {
-            fileName = fileNameMatch[1];
-          }
-        }
-
         const url = window.URL.createObjectURL(blob);
         const a = document.createElement('a');
         a.href = url;
-        a.download = fileName;
+        a.download = `gcash_backup_${new Date().toISOString().replace(/[:.]/g, '-')}.sql`;
         document.body.appendChild(a);
         a.click();
         document.body.removeChild(a);
         window.URL.revokeObjectURL(url);
-
         alert('Backup created successfully');
       } catch (error) {
         console.error('Error creating backup:', error);
@@ -1417,11 +1478,9 @@
           fileInput.value = '';
           fetchBalance();
           fetchTransactions();
+          fetchLatestTransaction();
           fetchTransactionTrends();
           fetchTypeBreakdown();
-          fetchUserTransactions();
-          fetchMonthlyTransactions();
-          fetchFeeComparison();
         }
       } catch (error) {
         console.error('Error restoring database:', error);

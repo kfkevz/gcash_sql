@@ -596,37 +596,43 @@ app.post('/api/restore', upload.single('backupFile'), async (req, res) => {
   }
 });
 
-// New Endpoint: Transaction Trends (Last 7 Days)
+// Updated Endpoint: Transaction Trends (Custom Date Range)
 app.get('/api/reports/trend', async (req, res) => {
   try {
-    const days = parseInt(req.query.days) || 7;
-    const today = new Date();
-    const dates = [];
-    const results = [];
+    const { startDate, endDate } = req.query;
 
-    // Generate the last `days` dates
-    for (let i = days - 1; i >= 0; i--) {
-      const date = new Date(today);
-      date.setDate(today.getDate() - i);
-      const dateStr = date.toISOString().split('T')[0]; // YYYY-MM-DD
-      dates.push(dateStr);
-      results.push({ date: dateStr, totalAmount: 0 });
+    // Validate date inputs
+    if (!startDate || !endDate) {
+      return res.status(400).json({ error: 'startDate and endDate are required' });
+    }
+    if (new Date(startDate) > new Date(endDate)) {
+      return res.status(400).json({ error: 'startDate cannot be later than endDate' });
     }
 
-    // Query transactions for the last `days` days
+    // Generate array of dates between startDate and endDate
+    const dates = [];
+    const results = [];
+    let currentDate = new Date(startDate);
+    const end = new Date(endDate);
+
+    while (currentDate <= end) {
+      const dateStr = currentDate.toISOString().split('T')[0];
+      dates.push(dateStr);
+      results.push({ date: dateStr, totalAmount: 0 });
+      currentDate.setDate(currentDate.getDate() + 1);
+    }
+
+    // Query transactions within the date range
     const query = `
       SELECT date, SUM(CAST(amount AS DECIMAL)) as total_amount
       FROM Transactions
-      WHERE date >= $1
+      WHERE date >= $1 AND date <= $2
       GROUP BY date
       ORDER BY date ASC
     `;
-    const startDate = new Date(today);
-    startDate.setDate(today.getDate() - (days - 1));
-    const startDateStr = startDate.toISOString().split('T')[0];
-    const queryResult = await pool.query(query, [startDateStr]);
+    const queryResult = await pool.query(query, [startDate, endDate]);
 
-    // Map the results to the dates array
+    // Map query results to the dates array
     queryResult.rows.forEach(row => {
       const index = dates.indexOf(row.date);
       if (index !== -1) {
@@ -641,7 +647,7 @@ app.get('/api/reports/trend', async (req, res) => {
   }
 });
 
-// New Endpoint: Transaction Type Breakdown
+// Transaction Type Breakdown
 app.get('/api/reports/type-breakdown', async (req, res) => {
   try {
     const query = `
@@ -669,7 +675,7 @@ app.get('/api/reports/type-breakdown', async (req, res) => {
   }
 });
 
-// Updated Endpoint: User Transactions Report with Pagination and Search
+// User Transactions Report with Pagination and Search
 app.get('/api/reports/user-transactions', async (req, res) => {
   try {
     const page = parseInt(req.query.page) || 1;

@@ -1,0 +1,61 @@
+2025-05-04 12:49:02.454 UTC [1] LOG:  starting PostgreSQL 16.8 (Debian 16.8-1.pgdg120+1) on x86_64-pc-linux-gnu, compiled by gcc (Debian 12.2.0-14) 12.2.0, 64-bit
+2025-05-04 12:49:02.454 UTC [1] LOG:  listening on IPv4 address "0.0.0.0", port 5432
+2025-05-04 12:49:02.454 UTC [1] LOG:  listening on IPv6 address "::", port 5432
+2025-05-04 12:49:02.461 UTC [1] LOG:  listening on Unix socket "/var/run/postgresql/.s.PGSQL.5432"
+2025-05-04 12:49:02.473 UTC [30] LOG:  database system was shut down at 2025-05-03 15:52:16 UTC
+2025-05-04 12:49:02.501 UTC [1] LOG:  database system is ready to accept connections
+2025-05-04 12:48:08.711 UTC [34] LOG:  statement: 
+	      SELECT EXISTS (
+	        SELECT 1 FROM pg_type WHERE typname = 'transaction_type'
+	      ) AS type_exists;
+	    
+2025-05-04 12:48:08.730 UTC [34] LOG:  statement: 
+	        SELECT e.enumlabel
+	        FROM pg_enum e
+	        JOIN pg_type t ON e.enumtypid = t.oid
+	        WHERE t.typname = 'transaction_type'
+	        ORDER BY e.enumsortorder;
+	      
+2025-05-04 12:48:08.737 UTC [34] LOG:  statement: 
+	      CREATE TABLE IF NOT EXISTS Transactions (
+	        id SERIAL PRIMARY KEY,
+	        date TEXT NOT NULL,
+	        time TEXT NOT NULL,
+	        type transaction_type NOT NULL,
+	        amount TEXT NOT NULL,
+	        name TEXT NOT NULL,
+	        ref TEXT NOT NULL,
+	        fee TEXT NOT NULL,
+	        remarks TEXT NOT NULL,
+	        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+	        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+	      );
+	    
+2025-05-04 12:48:08.738 UTC [34] LOG:  statement: 
+	      DO $$ 
+	      BEGIN
+	        IF NOT EXISTS (SELECT 1 FROM information_schema.columns 
+	                       WHERE table_name = 'transactions' AND column_name = 'created_at') THEN
+	          ALTER TABLE Transactions ADD COLUMN created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP;
+	        END IF;
+	        IF NOT EXISTS (SELECT 1 FROM information_schema.columns 
+	                       WHERE table_name = 'transactions' AND column_name = 'updated_at') THEN
+	          ALTER TABLE Transactions ADD COLUMN updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP;
+	        END IF;
+	      END $$;
+	    
+2025-05-04 12:48:08.769 UTC [34] LOG:  statement: 
+	      CREATE TABLE IF NOT EXISTS CurrentBalance (
+	        id SERIAL PRIMARY KEY,
+	        balance DECIMAL NOT NULL DEFAULT 0.00
+	      );
+	    
+2025-05-04 12:48:08.769 UTC [34] LOG:  statement: SELECT * FROM CurrentBalance
+2025-05-04 12:48:41.571 UTC [1] LOG:  received fast shutdown request
+2025-05-04 12:48:41.575 UTC [1] LOG:  aborting any active transactions
+2025-05-04 12:48:41.576 UTC [35] FATAL:  terminating connection due to administrator command
+2025-05-04 12:48:41.577 UTC [1] LOG:  background worker "logical replication launcher" (PID 33) exited with exit code 1
+2025-05-04 12:48:41.578 UTC [28] LOG:  shutting down
+2025-05-04 12:48:41.580 UTC [28] LOG:  checkpoint starting: shutdown immediate
+2025-05-04 12:48:41.601 UTC [28] LOG:  checkpoint complete: wrote 3 buffers (0.0%); 0 WAL file(s) added, 0 removed, 0 recycled; write=0.006 s, sync=0.002 s, total=0.023 s; sync files=2, longest=0.001 s, average=0.001 s; distance=0 kB, estimate=0 kB; lsn=0/19C0CF0, redo lsn=0/19C0CF0
+2025-05-04 12:48:41.605 UTC [1] LOG:  database system is shut down

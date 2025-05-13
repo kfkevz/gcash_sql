@@ -1,0 +1,154 @@
+2025-05-13 14:22:09.722 UTC [1] LOG:  starting PostgreSQL 16.8 (Debian 16.8-1.pgdg120+1) on x86_64-pc-linux-gnu, compiled by gcc (Debian 12.2.0-14) 12.2.0, 64-bit
+2025-05-13 14:22:09.722 UTC [1] LOG:  listening on IPv4 address "0.0.0.0", port 5432
+2025-05-13 14:22:09.723 UTC [1] LOG:  listening on IPv6 address "::", port 5432
+2025-05-13 14:22:09.730 UTC [1] LOG:  listening on Unix socket "/var/run/postgresql/.s.PGSQL.5432"
+2025-05-13 14:22:09.738 UTC [30] LOG:  database system was shut down at 2025-05-13 14:17:06 UTC
+2025-05-13 14:22:09.755 UTC [1] LOG:  database system is ready to accept connections
+2025-05-13 14:22:15.971 UTC [42] LOG:  statement: 
+	      SELECT EXISTS (
+	        SELECT 1 FROM pg_type WHERE typname = 'transaction_type'
+	      ) AS type_exists;
+	    
+2025-05-13 14:22:15.987 UTC [42] LOG:  statement: 
+	        SELECT e.enumlabel
+	        FROM pg_enum e
+	        JOIN pg_type t ON e.enumtypid = t.oid
+	        WHERE t.typname = 'transaction_type'
+	        ORDER BY e.enumsortorder;
+	      
+2025-05-13 14:22:15.993 UTC [42] LOG:  statement: 
+	      CREATE TABLE IF NOT EXISTS Transactions (
+	        id SERIAL PRIMARY KEY,
+	        date TEXT NOT NULL,
+	        time TEXT NOT NULL,
+	        type transaction_type NOT NULL,
+	        amount TEXT NOT NULL,
+	        name TEXT NOT NULL,
+	        ref TEXT NOT NULL,
+	        fee TEXT NOT NULL,
+	        remarks TEXT NOT NULL,
+	        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+	        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+	      );
+	    
+2025-05-13 14:22:15.994 UTC [42] LOG:  statement: 
+	      DO $$ 
+	      BEGIN
+	        IF NOT EXISTS (SELECT 1 FROM information_schema.columns 
+	                       WHERE table_name = 'transactions' AND column_name = 'created_at') THEN
+	          ALTER TABLE Transactions ADD COLUMN created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP;
+	        END IF;
+	        IF NOT EXISTS (SELECT 1 FROM information_schema.columns 
+	                       WHERE table_name = 'transactions' AND column_name = 'updated_at') THEN
+	          ALTER TABLE Transactions ADD COLUMN updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP;
+	        END IF;
+	      END $$;
+	    
+2025-05-13 14:22:16.019 UTC [42] LOG:  statement: 
+	      CREATE TABLE IF NOT EXISTS CurrentBalance (
+	        id SERIAL PRIMARY KEY,
+	        balance DECIMAL NOT NULL DEFAULT 0.00
+	      );
+	    
+2025-05-13 14:22:16.019 UTC [42] LOG:  statement: SELECT * FROM CurrentBalance
+2025-05-13 14:22:54.721 UTC [68] LOG:  statement: SELECT balance FROM CurrentBalance WHERE id = 1
+2025-05-13 14:22:54.721 UTC [71] LOG:  statement: SELECT * FROM Transactions ORDER BY id DESC LIMIT 1
+2025-05-13 14:22:54.722 UTC [69] LOG:  execute <unnamed>: SELECT * FROM Transactions WHERE date = $1 ORDER BY id DESC
+2025-05-13 14:22:54.722 UTC [69] DETAIL:  parameters: $1 = '2025-05-13'
+2025-05-13 14:22:54.725 UTC [70] LOG:  execute <unnamed>: 
+	      SELECT date, SUM(CAST(amount AS DECIMAL)) as total_amount
+	      FROM Transactions
+	      WHERE date >= $1 AND date <= $2
+	      GROUP BY date
+	      ORDER BY date ASC
+	    
+2025-05-13 14:22:54.725 UTC [70] DETAIL:  parameters: $1 = '2025-05-07', $2 = '2025-05-13'
+2025-05-13 14:22:54.730 UTC [72] LOG:  statement: 
+	      SELECT type, COUNT(*) as count
+	      FROM Transactions
+	      GROUP BY type
+	    
+2025-05-13 14:22:54.744 UTC [72] LOG:  statement: SELECT * FROM Transactions ORDER BY id DESC LIMIT 1
+2025-05-13 14:23:04.542 UTC [72] LOG:  execute <unnamed>: 
+	      SELECT date, SUM(CAST(amount AS DECIMAL)) as total_amount
+	      FROM Transactions
+	      WHERE date >= $1 AND date <= $2
+	      GROUP BY date
+	      ORDER BY date ASC
+	    
+2025-05-13 14:23:04.542 UTC [72] DETAIL:  parameters: $1 = '2025-05-01', $2 = '2025-05-13'
+2025-05-13 14:23:12.302 UTC [72] LOG:  execute <unnamed>: 
+	      SELECT date, SUM(CAST(amount AS DECIMAL)) as total_amount
+	      FROM Transactions
+	      WHERE date >= $1 AND date <= $2
+	      GROUP BY date
+	      ORDER BY date ASC
+	    
+2025-05-13 14:23:12.302 UTC [72] DETAIL:  parameters: $1 = '2025-05-01', $2 = '2025-05-01'
+2025-05-13 14:23:16.125 UTC [72] LOG:  execute <unnamed>: 
+	      SELECT date, SUM(CAST(amount AS DECIMAL)) as total_amount
+	      FROM Transactions
+	      WHERE date >= $1 AND date <= $2
+	      GROUP BY date
+	      ORDER BY date ASC
+	    
+2025-05-13 14:23:16.125 UTC [72] DETAIL:  parameters: $1 = '2025-05-01', $2 = '2025-05-02'
+2025-05-13 14:23:19.793 UTC [72] LOG:  execute <unnamed>: 
+	      SELECT date, SUM(CAST(amount AS DECIMAL)) as total_amount
+	      FROM Transactions
+	      WHERE date >= $1 AND date <= $2
+	      GROUP BY date
+	      ORDER BY date ASC
+	    
+2025-05-13 14:23:19.793 UTC [72] DETAIL:  parameters: $1 = '2025-05-01', $2 = '2025-05-05'
+2025-05-13 14:23:22.643 UTC [72] LOG:  execute <unnamed>: 
+	      SELECT date, SUM(CAST(amount AS DECIMAL)) as total_amount
+	      FROM Transactions
+	      WHERE date >= $1 AND date <= $2
+	      GROUP BY date
+	      ORDER BY date ASC
+	    
+2025-05-13 14:23:22.643 UTC [72] DETAIL:  parameters: $1 = '2025-05-06', $2 = '2025-05-10'
+2025-05-13 14:23:29.642 UTC [72] LOG:  execute <unnamed>: UPDATE CurrentBalance SET balance = $1 WHERE id = 1
+2025-05-13 14:23:29.642 UTC [72] DETAIL:  parameters: $1 = '16000'
+2025-05-13 14:23:30.957 UTC [72] LOG:  statement: SELECT balance FROM CurrentBalance WHERE id = 1
+2025-05-13 14:23:43.173 UTC [114] LOG:  execute <unnamed>: INSERT INTO Transactions (date, time, type, amount, name, ref, fee, remarks, created_at, updated_at)
+	       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
+	       RETURNING id
+2025-05-13 14:23:43.173 UTC [114] DETAIL:  parameters: $1 = '2025-05-13', $2 = '22:24', $3 = 'Cash In', $4 = '500', $5 = 'KFA', $6 = '12345', $7 = '10', $8 = 'SENT'
+2025-05-13 14:23:43.178 UTC [114] LOG:  execute <unnamed>: UPDATE CurrentBalance SET balance = balance + $1 WHERE id = 1
+2025-05-13 14:23:43.178 UTC [114] DETAIL:  parameters: $1 = '-500'
+2025-05-13 14:23:45.189 UTC [114] LOG:  execute <unnamed>: SELECT * FROM Transactions WHERE date = $1 ORDER BY id DESC
+2025-05-13 14:23:45.189 UTC [114] DETAIL:  parameters: $1 = '2025-05-13'
+2025-05-13 14:23:45.192 UTC [114] LOG:  statement: SELECT balance FROM CurrentBalance WHERE id = 1
+2025-05-13 14:23:45.198 UTC [114] LOG:  statement: SELECT * FROM Transactions ORDER BY id DESC LIMIT 1
+2025-05-13 14:23:47.024 UTC [114] LOG:  execute <unnamed>: SELECT * FROM Transactions WHERE date = $1 ORDER BY id DESC
+2025-05-13 14:23:47.024 UTC [114] DETAIL:  parameters: $1 = '2025-05-13'
+2025-05-13 14:23:47.030 UTC [114] LOG:  statement: SELECT * FROM Transactions ORDER BY id DESC LIMIT 1
+2025-05-13 14:23:49.651 UTC [114] LOG:  execute <unnamed>: SELECT * FROM Transactions WHERE id = $1
+2025-05-13 14:23:49.651 UTC [114] DETAIL:  parameters: $1 = '482'
+2025-05-13 14:23:49.651 UTC [114] LOG:  execute <unnamed>: UPDATE CurrentBalance SET balance = balance + $1 WHERE id = 1
+2025-05-13 14:23:49.651 UTC [114] DETAIL:  parameters: $1 = '500'
+2025-05-13 14:23:49.654 UTC [114] LOG:  execute <unnamed>: DELETE FROM Transactions WHERE id = $1
+2025-05-13 14:23:49.654 UTC [114] DETAIL:  parameters: $1 = '482'
+2025-05-13 14:23:51.402 UTC [114] LOG:  execute <unnamed>: SELECT * FROM Transactions WHERE date = $1 ORDER BY id DESC
+2025-05-13 14:23:51.402 UTC [114] DETAIL:  parameters: $1 = '2025-05-13'
+2025-05-13 14:23:51.404 UTC [114] LOG:  statement: SELECT balance FROM CurrentBalance WHERE id = 1
+2025-05-13 14:23:51.408 UTC [114] LOG:  statement: SELECT * FROM Transactions ORDER BY id DESC LIMIT 1
+2025-05-13 14:23:52.534 UTC [114] LOG:  statement: SELECT balance FROM CurrentBalance WHERE id = 1
+2025-05-13 14:23:52.538 UTC [114] LOG:  execute <unnamed>: 
+	      SELECT date, SUM(CAST(amount AS DECIMAL)) as total_amount
+	      FROM Transactions
+	      WHERE date >= $1 AND date <= $2
+	      GROUP BY date
+	      ORDER BY date ASC
+	    
+2025-05-13 14:23:52.538 UTC [114] DETAIL:  parameters: $1 = '2025-05-06', $2 = '2025-05-10'
+2025-05-13 14:23:52.543 UTC [123] LOG:  execute <unnamed>: SELECT * FROM Transactions WHERE date = $1 ORDER BY id DESC
+2025-05-13 14:23:52.543 UTC [123] DETAIL:  parameters: $1 = '2025-05-13'
+2025-05-13 14:23:52.545 UTC [124] LOG:  statement: 
+	      SELECT type, COUNT(*) as count
+	      FROM Transactions
+	      GROUP BY type
+	    
+2025-05-13 14:23:52.551 UTC [124] LOG:  statement: SELECT * FROM Transactions ORDER BY id DESC LIMIT 1

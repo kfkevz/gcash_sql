@@ -1,0 +1,2079 @@
+2025-05-13 13:03:45.158 UTC [1] LOG:  starting PostgreSQL 16.8 (Debian 16.8-1.pgdg120+1) on x86_64-pc-linux-gnu, compiled by gcc (Debian 12.2.0-14) 12.2.0, 64-bit
+2025-05-13 13:03:45.159 UTC [1] LOG:  listening on IPv4 address "0.0.0.0", port 5432
+2025-05-13 13:03:45.159 UTC [1] LOG:  listening on IPv6 address "::", port 5432
+2025-05-13 13:03:45.168 UTC [1] LOG:  listening on Unix socket "/var/run/postgresql/.s.PGSQL.5432"
+2025-05-13 13:03:45.176 UTC [30] LOG:  database system was interrupted; last known up at 2025-05-12 13:52:59 UTC
+2025-05-13 13:02:44.517 UTC [30] LOG:  database system was not properly shut down; automatic recovery in progress
+2025-05-13 13:02:44.522 UTC [30] LOG:  redo starts at 0/1A5CD60
+2025-05-13 13:02:44.522 UTC [30] LOG:  invalid record length at 0/1A5CE48: expected at least 24, got 0
+2025-05-13 13:02:44.522 UTC [30] LOG:  redo done at 0/1A5CE10 system usage: CPU: user: 0.00 s, system: 0.00 s, elapsed: 0.00 s
+2025-05-13 13:02:44.530 UTC [28] LOG:  checkpoint starting: end-of-recovery immediate wait
+2025-05-13 13:02:44.552 UTC [28] LOG:  checkpoint complete: wrote 3 buffers (0.0%); 0 WAL file(s) added, 0 removed, 0 recycled; write=0.006 s, sync=0.003 s, total=0.025 s; sync files=2, longest=0.002 s, average=0.002 s; distance=0 kB, estimate=0 kB; lsn=0/1A5CE48, redo lsn=0/1A5CE48
+2025-05-13 13:02:44.567 UTC [1] LOG:  database system is ready to accept connections
+2025-05-13 13:02:45.204 UTC [35] LOG:  statement: 
+	      SELECT EXISTS (
+	        SELECT 1 FROM pg_type WHERE typname = 'transaction_type'
+	      ) AS type_exists;
+	    
+2025-05-13 13:02:45.220 UTC [35] LOG:  statement: 
+	        SELECT e.enumlabel
+	        FROM pg_enum e
+	        JOIN pg_type t ON e.enumtypid = t.oid
+	        WHERE t.typname = 'transaction_type'
+	        ORDER BY e.enumsortorder;
+	      
+2025-05-13 13:02:45.225 UTC [35] LOG:  statement: 
+	      CREATE TABLE IF NOT EXISTS Transactions (
+	        id SERIAL PRIMARY KEY,
+	        date TEXT NOT NULL,
+	        time TEXT NOT NULL,
+	        type transaction_type NOT NULL,
+	        amount TEXT NOT NULL,
+	        name TEXT NOT NULL,
+	        ref TEXT NOT NULL,
+	        fee TEXT NOT NULL,
+	        remarks TEXT NOT NULL,
+	        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+	        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+	      );
+	    
+2025-05-13 13:02:45.226 UTC [35] LOG:  statement: 
+	      DO $$ 
+	      BEGIN
+	        IF NOT EXISTS (SELECT 1 FROM information_schema.columns 
+	                       WHERE table_name = 'transactions' AND column_name = 'created_at') THEN
+	          ALTER TABLE Transactions ADD COLUMN created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP;
+	        END IF;
+	        IF NOT EXISTS (SELECT 1 FROM information_schema.columns 
+	                       WHERE table_name = 'transactions' AND column_name = 'updated_at') THEN
+	          ALTER TABLE Transactions ADD COLUMN updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP;
+	        END IF;
+	      END $$;
+	    
+2025-05-13 13:02:45.250 UTC [35] LOG:  statement: 
+	      CREATE TABLE IF NOT EXISTS CurrentBalance (
+	        id SERIAL PRIMARY KEY,
+	        balance DECIMAL NOT NULL DEFAULT 0.00
+	      );
+	    
+2025-05-13 13:02:45.250 UTC [35] LOG:  statement: SELECT * FROM CurrentBalance
+2025-05-13 13:02:49.694 UTC [35] LOG:  execute <unnamed>: SELECT * FROM Transactions WHERE date = $1 ORDER BY id DESC
+2025-05-13 13:02:49.694 UTC [35] DETAIL:  parameters: $1 = '2025-05-13'
+2025-05-13 13:02:49.716 UTC [44] LOG:  statement: SELECT balance FROM CurrentBalance WHERE id = 1
+2025-05-13 13:02:49.716 UTC [45] LOG:  statement: SELECT * FROM Transactions ORDER BY id DESC LIMIT 1
+2025-05-13 13:02:49.717 UTC [47] LOG:  statement: 
+	      SELECT type, COUNT(*) as count
+	      FROM Transactions
+	      GROUP BY type
+	    
+2025-05-13 13:02:49.720 UTC [46] LOG:  execute <unnamed>: 
+	      SELECT date, SUM(CAST(amount AS DECIMAL)) as total_amount
+	      FROM Transactions
+	      WHERE date >= $1
+	      GROUP BY date
+	      ORDER BY date ASC
+	    
+2025-05-13 13:02:49.720 UTC [46] DETAIL:  parameters: $1 = '2025-05-07'
+2025-05-13 13:02:49.724 UTC [46] LOG:  statement: SELECT * FROM Transactions ORDER BY id DESC LIMIT 1
+2025-05-13 13:04:08.990 UTC [105] LOG:  execute <unnamed>: UPDATE CurrentBalance SET balance = $1 WHERE id = 1
+2025-05-13 13:04:08.990 UTC [105] DETAIL:  parameters: $1 = '10225.77'
+2025-05-13 13:04:10.368 UTC [105] LOG:  statement: SELECT balance FROM CurrentBalance WHERE id = 1
+2025-05-13 13:04:21.050 UTC [122] LOG:  execute <unnamed>: INSERT INTO Transactions (date, time, type, amount, name, ref, fee, remarks, created_at, updated_at)
+	       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
+	       RETURNING id
+2025-05-13 13:04:21.050 UTC [122] DETAIL:  parameters: $1 = '2025-05-13', $2 = '07:08', $3 = 'Cash Out', $4 = '450', $5 = 'E R.', $6 = '74926', $7 = '10', $8 = 'CLAIMED'
+2025-05-13 13:04:21.054 UTC [122] LOG:  execute <unnamed>: UPDATE CurrentBalance SET balance = balance + $1 WHERE id = 1
+2025-05-13 13:04:21.054 UTC [122] DETAIL:  parameters: $1 = '450'
+2025-05-13 13:04:21.291 UTC [122] LOG:  statement: SELECT balance FROM CurrentBalance WHERE id = 1
+2025-05-13 13:04:21.295 UTC [122] LOG:  execute <unnamed>: SELECT * FROM Transactions WHERE date = $1 ORDER BY id DESC
+2025-05-13 13:04:21.295 UTC [122] DETAIL:  parameters: $1 = '2025-05-13'
+2025-05-13 13:04:21.303 UTC [122] LOG:  execute <unnamed>: 
+	      SELECT 
+	        name,
+	        SUM(CASE WHEN type = 'Cash In' THEN 1 ELSE 0 END) AS cash_in_count,
+	        SUM(CASE WHEN type = 'Cash Out' THEN 1 ELSE 0 END) AS cash_out_count,
+	        SUM(CASE WHEN type = 'Load' THEN 1 ELSE 0 END) AS load_count,
+	        MAX(date) AS last_transaction
+	      FROM Transactions
+	    
+	      GROUP BY name
+	      ORDER BY name ASC
+	      LIMIT $1 OFFSET $2
+	    
+2025-05-13 13:04:21.303 UTC [122] DETAIL:  parameters: $1 = '10', $2 = '0'
+2025-05-13 13:04:21.307 UTC [123] LOG:  execute <unnamed>: 
+	      SELECT date, SUM(CAST(amount AS DECIMAL)) as total_amount
+	      FROM Transactions
+	      WHERE date >= $1
+	      GROUP BY date
+	      ORDER BY date ASC
+	    
+2025-05-13 13:04:21.307 UTC [123] DETAIL:  parameters: $1 = '2025-05-07'
+2025-05-13 13:04:21.310 UTC [124] LOG:  statement: 
+	      SELECT type, COUNT(*) as count
+	      FROM Transactions
+	      GROUP BY type
+	    
+2025-05-13 13:04:21.310 UTC [125] LOG:  statement: 
+	      SELECT COUNT(DISTINCT name) AS total_users
+	      FROM Transactions
+	    
+2025-05-13 13:04:21.312 UTC [126] LOG:  statement: SELECT * FROM Transactions ORDER BY id DESC LIMIT 1
+2025-05-13 13:05:26.107 UTC [176] LOG:  execute <unnamed>: INSERT INTO Transactions (date, time, type, amount, name, ref, fee, remarks, created_at, updated_at)
+	       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
+	       RETURNING id
+2025-05-13 13:05:26.107 UTC [176] DETAIL:  parameters: $1 = '2025-05-13', $2 = '08:14', $3 = 'Cash In', $4 = '2000', $5 = 'LU O O.', $6 = '84662', $7 = '30', $8 = 'CUANA'
+2025-05-13 13:05:26.109 UTC [176] LOG:  execute <unnamed>: UPDATE CurrentBalance SET balance = balance + $1 WHERE id = 1
+2025-05-13 13:05:26.109 UTC [176] DETAIL:  parameters: $1 = '-2000'
+2025-05-13 13:05:26.299 UTC [176] LOG:  execute <unnamed>: SELECT * FROM Transactions WHERE date = $1 ORDER BY id DESC
+2025-05-13 13:05:26.299 UTC [176] DETAIL:  parameters: $1 = '2025-05-13'
+2025-05-13 13:05:26.301 UTC [176] LOG:  statement: SELECT balance FROM CurrentBalance WHERE id = 1
+2025-05-13 13:05:26.303 UTC [176] LOG:  statement: 
+	      SELECT type, COUNT(*) as count
+	      FROM Transactions
+	      GROUP BY type
+	    
+2025-05-13 13:05:26.305 UTC [176] LOG:  statement: SELECT * FROM Transactions ORDER BY id DESC LIMIT 1
+2025-05-13 13:05:26.310 UTC [177] LOG:  execute <unnamed>: 
+	      SELECT date, SUM(CAST(amount AS DECIMAL)) as total_amount
+	      FROM Transactions
+	      WHERE date >= $1
+	      GROUP BY date
+	      ORDER BY date ASC
+	    
+2025-05-13 13:05:26.310 UTC [177] DETAIL:  parameters: $1 = '2025-05-07'
+2025-05-13 13:05:26.310 UTC [178] LOG:  statement: 
+	      SELECT COUNT(DISTINCT name) AS total_users
+	      FROM Transactions
+	    
+2025-05-13 13:05:26.313 UTC [179] LOG:  execute <unnamed>: 
+	      SELECT 
+	        name,
+	        SUM(CASE WHEN type = 'Cash In' THEN 1 ELSE 0 END) AS cash_in_count,
+	        SUM(CASE WHEN type = 'Cash Out' THEN 1 ELSE 0 END) AS cash_out_count,
+	        SUM(CASE WHEN type = 'Load' THEN 1 ELSE 0 END) AS load_count,
+	        MAX(date) AS last_transaction
+	      FROM Transactions
+	    
+	      GROUP BY name
+	      ORDER BY name ASC
+	      LIMIT $1 OFFSET $2
+	    
+2025-05-13 13:05:26.313 UTC [179] DETAIL:  parameters: $1 = '10', $2 = '0'
+2025-05-13 13:05:44.625 UTC [196] LOG:  execute <unnamed>: INSERT INTO Transactions (date, time, type, amount, name, ref, fee, remarks, created_at, updated_at)
+	       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
+	       RETURNING id
+2025-05-13 13:05:44.625 UTC [196] DETAIL:  parameters: $1 = '2025-05-13', $2 = '08:36', $3 = 'Cash Out', $4 = '3000', $5 = 'AL N M.', $6 = '20367', $7 = '45', $8 = 'CUANA'
+2025-05-13 13:05:44.629 UTC [196] LOG:  execute <unnamed>: UPDATE CurrentBalance SET balance = balance + $1 WHERE id = 1
+2025-05-13 13:05:44.629 UTC [196] DETAIL:  parameters: $1 = '3000'
+2025-05-13 13:05:44.850 UTC [196] LOG:  execute <unnamed>: SELECT * FROM Transactions WHERE date = $1 ORDER BY id DESC
+2025-05-13 13:05:44.850 UTC [196] DETAIL:  parameters: $1 = '2025-05-13'
+2025-05-13 13:05:44.852 UTC [196] LOG:  statement: SELECT balance FROM CurrentBalance WHERE id = 1
+2025-05-13 13:05:44.854 UTC [196] LOG:  execute <unnamed>: 
+	      SELECT date, SUM(CAST(amount AS DECIMAL)) as total_amount
+	      FROM Transactions
+	      WHERE date >= $1
+	      GROUP BY date
+	      ORDER BY date ASC
+	    
+2025-05-13 13:05:44.854 UTC [196] DETAIL:  parameters: $1 = '2025-05-07'
+2025-05-13 13:05:44.857 UTC [196] LOG:  execute <unnamed>: 
+	      SELECT 
+	        name,
+	        SUM(CASE WHEN type = 'Cash In' THEN 1 ELSE 0 END) AS cash_in_count,
+	        SUM(CASE WHEN type = 'Cash Out' THEN 1 ELSE 0 END) AS cash_out_count,
+	        SUM(CASE WHEN type = 'Load' THEN 1 ELSE 0 END) AS load_count,
+	        MAX(date) AS last_transaction
+	      FROM Transactions
+	    
+	      GROUP BY name
+	      ORDER BY name ASC
+	      LIMIT $1 OFFSET $2
+	    
+2025-05-13 13:05:44.857 UTC [196] DETAIL:  parameters: $1 = '10', $2 = '0'
+2025-05-13 13:05:44.858 UTC [196] LOG:  statement: SELECT * FROM Transactions ORDER BY id DESC LIMIT 1
+2025-05-13 13:05:44.861 UTC [198] LOG:  statement: 
+	      SELECT type, COUNT(*) as count
+	      FROM Transactions
+	      GROUP BY type
+	    
+2025-05-13 13:05:44.862 UTC [199] LOG:  statement: 
+	      SELECT COUNT(DISTINCT name) AS total_users
+	      FROM Transactions
+	    
+2025-05-13 13:07:00.561 UTC [208] LOG:  execute <unnamed>: INSERT INTO Transactions (date, time, type, amount, name, ref, fee, remarks, created_at, updated_at)
+	       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
+	       RETURNING id
+2025-05-13 13:07:00.561 UTC [208] DETAIL:  parameters: $1 = '2025-05-13', $2 = '09:10', $3 = 'Cash In', $4 = '100', $5 = 'LA I G.', $6 = '36699', $7 = '10', $8 = 'CUANA'
+2025-05-13 13:07:00.564 UTC [208] LOG:  execute <unnamed>: UPDATE CurrentBalance SET balance = balance + $1 WHERE id = 1
+2025-05-13 13:07:00.564 UTC [208] DETAIL:  parameters: $1 = '-100'
+2025-05-13 13:05:59.757 UTC [208] LOG:  execute <unnamed>: SELECT * FROM Transactions WHERE date = $1 ORDER BY id DESC
+2025-05-13 13:05:59.757 UTC [208] DETAIL:  parameters: $1 = '2025-05-13'
+2025-05-13 13:05:59.758 UTC [208] LOG:  statement: SELECT balance FROM CurrentBalance WHERE id = 1
+2025-05-13 13:05:59.760 UTC [208] LOG:  execute <unnamed>: 
+	      SELECT date, SUM(CAST(amount AS DECIMAL)) as total_amount
+	      FROM Transactions
+	      WHERE date >= $1
+	      GROUP BY date
+	      ORDER BY date ASC
+	    
+2025-05-13 13:05:59.760 UTC [208] DETAIL:  parameters: $1 = '2025-05-07'
+2025-05-13 13:05:59.763 UTC [208] LOG:  execute <unnamed>: 
+	      SELECT 
+	        name,
+	        SUM(CASE WHEN type = 'Cash In' THEN 1 ELSE 0 END) AS cash_in_count,
+	        SUM(CASE WHEN type = 'Cash Out' THEN 1 ELSE 0 END) AS cash_out_count,
+	        SUM(CASE WHEN type = 'Load' THEN 1 ELSE 0 END) AS load_count,
+	        MAX(date) AS last_transaction
+	      FROM Transactions
+	    
+	      GROUP BY name
+	      ORDER BY name ASC
+	      LIMIT $1 OFFSET $2
+	    
+2025-05-13 13:05:59.763 UTC [208] DETAIL:  parameters: $1 = '10', $2 = '0'
+2025-05-13 13:05:59.765 UTC [208] LOG:  statement: SELECT * FROM Transactions ORDER BY id DESC LIMIT 1
+2025-05-13 13:05:59.768 UTC [210] LOG:  statement: 
+	      SELECT COUNT(DISTINCT name) AS total_users
+	      FROM Transactions
+	    
+2025-05-13 13:05:59.768 UTC [209] LOG:  statement: 
+	      SELECT type, COUNT(*) as count
+	      FROM Transactions
+	      GROUP BY type
+	    
+2025-05-13 13:06:17.490 UTC [227] LOG:  execute <unnamed>: INSERT INTO Transactions (date, time, type, amount, name, ref, fee, remarks, created_at, updated_at)
+	       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
+	       RETURNING id
+2025-05-13 13:06:17.490 UTC [227] DETAIL:  parameters: $1 = '2025-05-13', $2 = '10:01', $3 = 'Cash Out', $4 = '1490', $5 = 'NA E AL A T.', $6 = '4000178', $7 = '30', $8 = 'CLAIMED'
+2025-05-13 13:06:17.492 UTC [227] LOG:  execute <unnamed>: UPDATE CurrentBalance SET balance = balance + $1 WHERE id = 1
+2025-05-13 13:06:17.492 UTC [227] DETAIL:  parameters: $1 = '1490'
+2025-05-13 13:06:17.716 UTC [227] LOG:  execute <unnamed>: SELECT * FROM Transactions WHERE date = $1 ORDER BY id DESC
+2025-05-13 13:06:17.716 UTC [227] DETAIL:  parameters: $1 = '2025-05-13'
+2025-05-13 13:06:17.718 UTC [227] LOG:  statement: SELECT balance FROM CurrentBalance WHERE id = 1
+2025-05-13 13:06:17.719 UTC [227] LOG:  execute <unnamed>: 
+	      SELECT date, SUM(CAST(amount AS DECIMAL)) as total_amount
+	      FROM Transactions
+	      WHERE date >= $1
+	      GROUP BY date
+	      ORDER BY date ASC
+	    
+2025-05-13 13:06:17.719 UTC [227] DETAIL:  parameters: $1 = '2025-05-07'
+2025-05-13 13:06:17.724 UTC [227] LOG:  statement: SELECT * FROM Transactions ORDER BY id DESC LIMIT 1
+2025-05-13 13:06:17.727 UTC [228] LOG:  statement: 
+	      SELECT type, COUNT(*) as count
+	      FROM Transactions
+	      GROUP BY type
+	    
+2025-05-13 13:06:17.727 UTC [230] LOG:  statement: 
+	      SELECT COUNT(DISTINCT name) AS total_users
+	      FROM Transactions
+	    
+2025-05-13 13:06:17.728 UTC [229] LOG:  execute <unnamed>: 
+	      SELECT 
+	        name,
+	        SUM(CASE WHEN type = 'Cash In' THEN 1 ELSE 0 END) AS cash_in_count,
+	        SUM(CASE WHEN type = 'Cash Out' THEN 1 ELSE 0 END) AS cash_out_count,
+	        SUM(CASE WHEN type = 'Load' THEN 1 ELSE 0 END) AS load_count,
+	        MAX(date) AS last_transaction
+	      FROM Transactions
+	    
+	      GROUP BY name
+	      ORDER BY name ASC
+	      LIMIT $1 OFFSET $2
+	    
+2025-05-13 13:06:17.728 UTC [229] DETAIL:  parameters: $1 = '10', $2 = '0'
+2025-05-13 13:07:13.558 UTC [280] LOG:  execute <unnamed>: INSERT INTO Transactions (date, time, type, amount, name, ref, fee, remarks, created_at, updated_at)
+	       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
+	       RETURNING id
+2025-05-13 13:07:13.558 UTC [280] DETAIL:  parameters: $1 = '2025-05-13', $2 = '10:11', $3 = 'Cash In', $4 = '2000', $5 = 'CE E S.', $6 = '53315', $7 = '30', $8 = 'CUANA'
+2025-05-13 13:07:13.560 UTC [280] LOG:  execute <unnamed>: UPDATE CurrentBalance SET balance = balance + $1 WHERE id = 1
+2025-05-13 13:07:13.560 UTC [280] DETAIL:  parameters: $1 = '-2000'
+2025-05-13 13:07:13.766 UTC [280] LOG:  execute <unnamed>: SELECT * FROM Transactions WHERE date = $1 ORDER BY id DESC
+2025-05-13 13:07:13.766 UTC [280] DETAIL:  parameters: $1 = '2025-05-13'
+2025-05-13 13:07:13.768 UTC [280] LOG:  statement: SELECT balance FROM CurrentBalance WHERE id = 1
+2025-05-13 13:07:13.770 UTC [280] LOG:  execute <unnamed>: 
+	      SELECT date, SUM(CAST(amount AS DECIMAL)) as total_amount
+	      FROM Transactions
+	      WHERE date >= $1
+	      GROUP BY date
+	      ORDER BY date ASC
+	    
+2025-05-13 13:07:13.770 UTC [280] DETAIL:  parameters: $1 = '2025-05-07'
+2025-05-13 13:07:13.773 UTC [280] LOG:  execute <unnamed>: 
+	      SELECT 
+	        name,
+	        SUM(CASE WHEN type = 'Cash In' THEN 1 ELSE 0 END) AS cash_in_count,
+	        SUM(CASE WHEN type = 'Cash Out' THEN 1 ELSE 0 END) AS cash_out_count,
+	        SUM(CASE WHEN type = 'Load' THEN 1 ELSE 0 END) AS load_count,
+	        MAX(date) AS last_transaction
+	      FROM Transactions
+	    
+	      GROUP BY name
+	      ORDER BY name ASC
+	      LIMIT $1 OFFSET $2
+	    
+2025-05-13 13:07:13.773 UTC [280] DETAIL:  parameters: $1 = '10', $2 = '0'
+2025-05-13 13:07:13.776 UTC [280] LOG:  statement: SELECT * FROM Transactions ORDER BY id DESC LIMIT 1
+2025-05-13 13:07:13.779 UTC [281] LOG:  statement: 
+	      SELECT type, COUNT(*) as count
+	      FROM Transactions
+	      GROUP BY type
+	    
+2025-05-13 13:07:13.780 UTC [282] LOG:  statement: 
+	      SELECT COUNT(DISTINCT name) AS total_users
+	      FROM Transactions
+	    
+2025-05-13 13:07:37.028 UTC [300] LOG:  execute <unnamed>: INSERT INTO Transactions (date, time, type, amount, name, ref, fee, remarks, created_at, updated_at)
+	       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
+	       RETURNING id
+2025-05-13 13:07:37.028 UTC [300] DETAIL:  parameters: $1 = '2025-05-13', $2 = '10:44', $3 = 'Cash Out', $4 = '500', $5 = 'JO N MA O M.', $6 = '95737', $7 = '0', $8 = 'UTANG'
+2025-05-13 13:07:37.030 UTC [300] LOG:  execute <unnamed>: UPDATE CurrentBalance SET balance = balance + $1 WHERE id = 1
+2025-05-13 13:07:37.030 UTC [300] DETAIL:  parameters: $1 = '500'
+2025-05-13 13:07:37.391 UTC [300] LOG:  execute <unnamed>: SELECT * FROM Transactions WHERE date = $1 ORDER BY id DESC
+2025-05-13 13:07:37.391 UTC [300] DETAIL:  parameters: $1 = '2025-05-13'
+2025-05-13 13:07:37.393 UTC [300] LOG:  statement: SELECT balance FROM CurrentBalance WHERE id = 1
+2025-05-13 13:07:37.394 UTC [300] LOG:  statement: 
+	      SELECT type, COUNT(*) as count
+	      FROM Transactions
+	      GROUP BY type
+	    
+2025-05-13 13:07:37.397 UTC [300] LOG:  statement: SELECT * FROM Transactions ORDER BY id DESC LIMIT 1
+2025-05-13 13:07:37.402 UTC [301] LOG:  execute <unnamed>: 
+	      SELECT date, SUM(CAST(amount AS DECIMAL)) as total_amount
+	      FROM Transactions
+	      WHERE date >= $1
+	      GROUP BY date
+	      ORDER BY date ASC
+	    
+2025-05-13 13:07:37.402 UTC [301] DETAIL:  parameters: $1 = '2025-05-07'
+2025-05-13 13:07:37.402 UTC [303] LOG:  statement: 
+	      SELECT COUNT(DISTINCT name) AS total_users
+	      FROM Transactions
+	    
+2025-05-13 13:07:37.403 UTC [302] LOG:  execute <unnamed>: 
+	      SELECT 
+	        name,
+	        SUM(CASE WHEN type = 'Cash In' THEN 1 ELSE 0 END) AS cash_in_count,
+	        SUM(CASE WHEN type = 'Cash Out' THEN 1 ELSE 0 END) AS cash_out_count,
+	        SUM(CASE WHEN type = 'Load' THEN 1 ELSE 0 END) AS load_count,
+	        MAX(date) AS last_transaction
+	      FROM Transactions
+	    
+	      GROUP BY name
+	      ORDER BY name ASC
+	      LIMIT $1 OFFSET $2
+	    
+2025-05-13 13:07:37.403 UTC [302] DETAIL:  parameters: $1 = '10', $2 = '0'
+2025-05-13 13:08:45.669 UTC [28] LOG:  checkpoint starting: time
+2025-05-13 13:07:45.083 UTC [28] LOG:  checkpoint complete: wrote 5 buffers (0.0%); 0 WAL file(s) added, 0 removed, 0 recycled; write=0.000 s, sync=0.006 s, total=0.000 s; sync files=5, longest=0.003 s, average=0.002 s; distance=22 kB, estimate=22 kB; lsn=0/1A62A70, redo lsn=0/1A62A38
+2025-05-13 13:07:46.289 UTC [302] LOG:  execute <unnamed>: SELECT * FROM Transactions WHERE date = $1 ORDER BY id DESC
+2025-05-13 13:07:46.289 UTC [302] DETAIL:  parameters: $1 = '2025-05-13'
+2025-05-13 13:07:46.295 UTC [302] LOG:  statement: SELECT * FROM Transactions ORDER BY id DESC LIMIT 1
+2025-05-13 13:07:47.532 UTC [302] LOG:  execute <unnamed>: SELECT * FROM Transactions WHERE CAST(id AS TEXT) ILIKE $1 ORDER BY id DESC
+2025-05-13 13:07:47.532 UTC [302] DETAIL:  parameters: $1 = '%453%'
+2025-05-13 13:07:47.538 UTC [302] LOG:  statement: SELECT balance FROM CurrentBalance WHERE id = 1
+2025-05-13 13:07:47.541 UTC [302] LOG:  execute <unnamed>: SELECT * FROM Transactions WHERE date = $1 ORDER BY id DESC
+2025-05-13 13:07:47.541 UTC [302] DETAIL:  parameters: $1 = '2025-05-13'
+2025-05-13 13:07:47.543 UTC [302] LOG:  statement: 
+	      SELECT type, COUNT(*) as count
+	      FROM Transactions
+	      GROUP BY type
+	    
+2025-05-13 13:07:47.547 UTC [302] LOG:  statement: SELECT * FROM Transactions ORDER BY id DESC LIMIT 1
+2025-05-13 13:07:47.551 UTC [312] LOG:  execute <unnamed>: 
+	      SELECT date, SUM(CAST(amount AS DECIMAL)) as total_amount
+	      FROM Transactions
+	      WHERE date >= $1
+	      GROUP BY date
+	      ORDER BY date ASC
+	    
+2025-05-13 13:07:47.551 UTC [312] DETAIL:  parameters: $1 = '2025-05-07'
+2025-05-13 13:07:51.950 UTC [312] LOG:  execute <unnamed>: SELECT * FROM Transactions WHERE id = $1
+2025-05-13 13:07:51.950 UTC [312] DETAIL:  parameters: $1 = '453'
+2025-05-13 13:07:51.951 UTC [312] LOG:  execute <unnamed>: UPDATE CurrentBalance SET balance = balance + $1 WHERE id = 1
+2025-05-13 13:07:51.951 UTC [312] DETAIL:  parameters: $1 = '-500'
+2025-05-13 13:07:51.953 UTC [312] LOG:  execute <unnamed>: UPDATE Transactions 
+	       SET date = $1, time = $2, type = $3, amount = $4, name = $5, ref = $6, fee = $7, remarks = $8, updated_at = CURRENT_TIMESTAMP
+	       WHERE id = $9
+2025-05-13 13:07:51.953 UTC [312] DETAIL:  parameters: $1 = '2025-05-13', $2 = '10:44', $3 = 'Cash Out', $4 = '500', $5 = 'JO N MA O M.', $6 = '95737', $7 = '10', $8 = 'CUANA', $9 = '453'
+2025-05-13 13:07:51.954 UTC [312] LOG:  execute <unnamed>: UPDATE CurrentBalance SET balance = balance + $1 WHERE id = 1
+2025-05-13 13:07:51.954 UTC [312] DETAIL:  parameters: $1 = '500'
+2025-05-13 13:07:52.246 UTC [302] LOG:  statement: SELECT balance FROM CurrentBalance WHERE id = 1
+2025-05-13 13:07:52.246 UTC [312] LOG:  execute <unnamed>: SELECT * FROM Transactions WHERE date = $1 ORDER BY id DESC
+2025-05-13 13:07:52.246 UTC [312] DETAIL:  parameters: $1 = '2025-05-13'
+2025-05-13 13:07:52.248 UTC [312] LOG:  statement: 
+	      SELECT COUNT(DISTINCT name) AS total_users
+	      FROM Transactions
+	    
+2025-05-13 13:07:52.248 UTC [302] LOG:  execute <unnamed>: 
+	      SELECT 
+	        name,
+	        SUM(CASE WHEN type = 'Cash In' THEN 1 ELSE 0 END) AS cash_in_count,
+	        SUM(CASE WHEN type = 'Cash Out' THEN 1 ELSE 0 END) AS cash_out_count,
+	        SUM(CASE WHEN type = 'Load' THEN 1 ELSE 0 END) AS load_count,
+	        MAX(date) AS last_transaction
+	      FROM Transactions
+	    
+	      GROUP BY name
+	      ORDER BY name ASC
+	      LIMIT $1 OFFSET $2
+	    
+2025-05-13 13:07:52.248 UTC [302] DETAIL:  parameters: $1 = '10', $2 = '0'
+2025-05-13 13:07:52.252 UTC [312] LOG:  statement: SELECT * FROM Transactions ORDER BY id DESC LIMIT 1
+2025-05-13 13:07:52.254 UTC [322] LOG:  statement: 
+	      SELECT type, COUNT(*) as count
+	      FROM Transactions
+	      GROUP BY type
+	    
+2025-05-13 13:07:52.256 UTC [321] LOG:  execute <unnamed>: 
+	      SELECT date, SUM(CAST(amount AS DECIMAL)) as total_amount
+	      FROM Transactions
+	      WHERE date >= $1
+	      GROUP BY date
+	      ORDER BY date ASC
+	    
+2025-05-13 13:07:52.256 UTC [321] DETAIL:  parameters: $1 = '2025-05-07'
+2025-05-13 13:08:29.585 UTC [348] LOG:  execute <unnamed>: INSERT INTO Transactions (date, time, type, amount, name, ref, fee, remarks, created_at, updated_at)
+	       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
+	       RETURNING id
+2025-05-13 13:08:29.585 UTC [348] DETAIL:  parameters: $1 = '2025-05-13', $2 = '11:59', $3 = 'Cash In', $4 = '1000', $5 = 'DR V D.', $6 = '85395', $7 = '0', $8 = 'UTANG'
+2025-05-13 13:08:29.588 UTC [348] LOG:  execute <unnamed>: UPDATE CurrentBalance SET balance = balance + $1 WHERE id = 1
+2025-05-13 13:08:29.588 UTC [348] DETAIL:  parameters: $1 = '-1000'
+2025-05-13 13:09:30.831 UTC [348] LOG:  execute <unnamed>: SELECT * FROM Transactions WHERE date = $1 ORDER BY id DESC
+2025-05-13 13:09:30.831 UTC [348] DETAIL:  parameters: $1 = '2025-05-13'
+2025-05-13 13:09:30.832 UTC [348] LOG:  statement: SELECT balance FROM CurrentBalance WHERE id = 1
+2025-05-13 13:09:30.834 UTC [348] LOG:  execute <unnamed>: 
+	      SELECT date, SUM(CAST(amount AS DECIMAL)) as total_amount
+	      FROM Transactions
+	      WHERE date >= $1
+	      GROUP BY date
+	      ORDER BY date ASC
+	    
+2025-05-13 13:09:30.834 UTC [348] DETAIL:  parameters: $1 = '2025-05-07'
+2025-05-13 13:09:30.838 UTC [348] LOG:  execute <unnamed>: 
+	      SELECT 
+	        name,
+	        SUM(CASE WHEN type = 'Cash In' THEN 1 ELSE 0 END) AS cash_in_count,
+	        SUM(CASE WHEN type = 'Cash Out' THEN 1 ELSE 0 END) AS cash_out_count,
+	        SUM(CASE WHEN type = 'Load' THEN 1 ELSE 0 END) AS load_count,
+	        MAX(date) AS last_transaction
+	      FROM Transactions
+	    
+	      GROUP BY name
+	      ORDER BY name ASC
+	      LIMIT $1 OFFSET $2
+	    
+2025-05-13 13:09:30.838 UTC [348] DETAIL:  parameters: $1 = '10', $2 = '0'
+2025-05-13 13:09:30.839 UTC [348] LOG:  statement: SELECT * FROM Transactions ORDER BY id DESC LIMIT 1
+2025-05-13 13:09:30.846 UTC [349] LOG:  statement: 
+	      SELECT type, COUNT(*) as count
+	      FROM Transactions
+	      GROUP BY type
+	    
+2025-05-13 13:09:30.846 UTC [350] LOG:  statement: 
+	      SELECT COUNT(DISTINCT name) AS total_users
+	      FROM Transactions
+	    
+2025-05-13 13:08:46.524 UTC [368] LOG:  execute <unnamed>: INSERT INTO Transactions (date, time, type, amount, name, ref, fee, remarks, created_at, updated_at)
+	       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
+	       RETURNING id
+2025-05-13 13:08:46.524 UTC [368] DETAIL:  parameters: $1 = '2025-05-13', $2 = '12:02', $3 = 'Cash In', $4 = '120', $5 = 'RO R A.', $6 = '88435', $7 = '10', $8 = 'CU'
+2025-05-13 13:08:46.526 UTC [368] LOG:  execute <unnamed>: UPDATE CurrentBalance SET balance = balance + $1 WHERE id = 1
+2025-05-13 13:08:46.526 UTC [368] DETAIL:  parameters: $1 = '-120'
+2025-05-13 13:08:47.595 UTC [368] LOG:  execute <unnamed>: SELECT * FROM Transactions WHERE date = $1 ORDER BY id DESC
+2025-05-13 13:08:47.595 UTC [368] DETAIL:  parameters: $1 = '2025-05-13'
+2025-05-13 13:08:47.597 UTC [368] LOG:  statement: SELECT balance FROM CurrentBalance WHERE id = 1
+2025-05-13 13:08:47.599 UTC [368] LOG:  execute <unnamed>: 
+	      SELECT date, SUM(CAST(amount AS DECIMAL)) as total_amount
+	      FROM Transactions
+	      WHERE date >= $1
+	      GROUP BY date
+	      ORDER BY date ASC
+	    
+2025-05-13 13:08:47.599 UTC [368] DETAIL:  parameters: $1 = '2025-05-07'
+2025-05-13 13:08:47.602 UTC [368] LOG:  statement: SELECT * FROM Transactions ORDER BY id DESC LIMIT 1
+2025-05-13 13:08:47.606 UTC [369] LOG:  statement: 
+	      SELECT type, COUNT(*) as count
+	      FROM Transactions
+	      GROUP BY type
+	    
+2025-05-13 13:08:47.608 UTC [371] LOG:  statement: 
+	      SELECT COUNT(DISTINCT name) AS total_users
+	      FROM Transactions
+	    
+2025-05-13 13:08:47.609 UTC [370] LOG:  execute <unnamed>: 
+	      SELECT 
+	        name,
+	        SUM(CASE WHEN type = 'Cash In' THEN 1 ELSE 0 END) AS cash_in_count,
+	        SUM(CASE WHEN type = 'Cash Out' THEN 1 ELSE 0 END) AS cash_out_count,
+	        SUM(CASE WHEN type = 'Load' THEN 1 ELSE 0 END) AS load_count,
+	        MAX(date) AS last_transaction
+	      FROM Transactions
+	    
+	      GROUP BY name
+	      ORDER BY name ASC
+	      LIMIT $1 OFFSET $2
+	    
+2025-05-13 13:08:47.609 UTC [370] DETAIL:  parameters: $1 = '10', $2 = '0'
+2025-05-13 13:08:50.427 UTC [370] LOG:  execute <unnamed>: SELECT * FROM Transactions WHERE date = $1 ORDER BY id DESC
+2025-05-13 13:08:50.427 UTC [370] DETAIL:  parameters: $1 = '2025-05-13'
+2025-05-13 13:08:50.432 UTC [370] LOG:  statement: SELECT * FROM Transactions ORDER BY id DESC LIMIT 1
+2025-05-13 13:08:51.538 UTC [370] LOG:  execute <unnamed>: SELECT * FROM Transactions WHERE CAST(id AS TEXT) ILIKE $1 ORDER BY id DESC
+2025-05-13 13:08:51.538 UTC [370] DETAIL:  parameters: $1 = '%455%'
+2025-05-13 13:08:51.545 UTC [370] LOG:  statement: SELECT balance FROM CurrentBalance WHERE id = 1
+2025-05-13 13:08:51.546 UTC [371] LOG:  execute <unnamed>: SELECT * FROM Transactions WHERE date = $1 ORDER BY id DESC
+2025-05-13 13:08:51.546 UTC [371] DETAIL:  parameters: $1 = '2025-05-13'
+2025-05-13 13:08:51.546 UTC [368] LOG:  statement: 
+	      SELECT type, COUNT(*) as count
+	      FROM Transactions
+	      GROUP BY type
+	    
+2025-05-13 13:08:51.546 UTC [369] LOG:  execute <unnamed>: 
+	      SELECT date, SUM(CAST(amount AS DECIMAL)) as total_amount
+	      FROM Transactions
+	      WHERE date >= $1
+	      GROUP BY date
+	      ORDER BY date ASC
+	    
+2025-05-13 13:08:51.546 UTC [369] DETAIL:  parameters: $1 = '2025-05-07'
+2025-05-13 13:08:51.553 UTC [369] LOG:  statement: SELECT * FROM Transactions ORDER BY id DESC LIMIT 1
+2025-05-13 13:08:53.292 UTC [369] LOG:  execute <unnamed>: SELECT * FROM Transactions WHERE id = $1
+2025-05-13 13:08:53.292 UTC [369] DETAIL:  parameters: $1 = '455'
+2025-05-13 13:08:53.293 UTC [369] LOG:  execute <unnamed>: UPDATE CurrentBalance SET balance = balance + $1 WHERE id = 1
+2025-05-13 13:08:53.293 UTC [369] DETAIL:  parameters: $1 = '120'
+2025-05-13 13:08:53.295 UTC [369] LOG:  execute <unnamed>: UPDATE Transactions 
+	       SET date = $1, time = $2, type = $3, amount = $4, name = $5, ref = $6, fee = $7, remarks = $8, updated_at = CURRENT_TIMESTAMP
+	       WHERE id = $9
+2025-05-13 13:08:53.295 UTC [369] DETAIL:  parameters: $1 = '2025-05-13', $2 = '12:02', $3 = 'Cash In', $4 = '120', $5 = 'RO R A.', $6 = '88435', $7 = '10', $8 = 'CUANA', $9 = '455'
+2025-05-13 13:08:53.296 UTC [369] LOG:  execute <unnamed>: UPDATE CurrentBalance SET balance = balance + $1 WHERE id = 1
+2025-05-13 13:08:53.296 UTC [369] DETAIL:  parameters: $1 = '-120'
+2025-05-13 13:09:05.447 UTC [390] LOG:  statement: SELECT balance FROM CurrentBalance WHERE id = 1
+2025-05-13 13:09:05.448 UTC [389] LOG:  execute <unnamed>: SELECT * FROM Transactions WHERE date = $1 ORDER BY id DESC
+2025-05-13 13:09:05.448 UTC [389] DETAIL:  parameters: $1 = '2025-05-13'
+2025-05-13 13:09:05.449 UTC [391] LOG:  execute <unnamed>: 
+	      SELECT date, SUM(CAST(amount AS DECIMAL)) as total_amount
+	      FROM Transactions
+	      WHERE date >= $1
+	      GROUP BY date
+	      ORDER BY date ASC
+	    
+2025-05-13 13:09:05.449 UTC [391] DETAIL:  parameters: $1 = '2025-05-07'
+2025-05-13 13:09:05.450 UTC [392] LOG:  statement: 
+	      SELECT type, COUNT(*) as count
+	      FROM Transactions
+	      GROUP BY type
+	    
+2025-05-13 13:09:05.454 UTC [394] LOG:  statement: 
+	      SELECT COUNT(DISTINCT name) AS total_users
+	      FROM Transactions
+	    
+2025-05-13 13:09:05.454 UTC [393] LOG:  execute <unnamed>: 
+	      SELECT 
+	        name,
+	        SUM(CASE WHEN type = 'Cash In' THEN 1 ELSE 0 END) AS cash_in_count,
+	        SUM(CASE WHEN type = 'Cash Out' THEN 1 ELSE 0 END) AS cash_out_count,
+	        SUM(CASE WHEN type = 'Load' THEN 1 ELSE 0 END) AS load_count,
+	        MAX(date) AS last_transaction
+	      FROM Transactions
+	    
+	      GROUP BY name
+	      ORDER BY name ASC
+	      LIMIT $1 OFFSET $2
+	    
+2025-05-13 13:09:05.454 UTC [393] DETAIL:  parameters: $1 = '10', $2 = '0'
+2025-05-13 13:09:05.456 UTC [394] LOG:  statement: SELECT * FROM Transactions ORDER BY id DESC LIMIT 1
+2025-05-13 13:09:17.177 UTC [403] LOG:  execute <unnamed>: INSERT INTO Transactions (date, time, type, amount, name, ref, fee, remarks, created_at, updated_at)
+	       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
+	       RETURNING id
+2025-05-13 13:09:17.177 UTC [403] DETAIL:  parameters: $1 = '2025-05-13', $2 = '13:21', $3 = 'Cash Out', $4 = '300', $5 = 'FE N T.', $6 = '16113', $7 = '10', $8 = 'CLAIMED'
+2025-05-13 13:09:17.179 UTC [403] LOG:  execute <unnamed>: UPDATE CurrentBalance SET balance = balance + $1 WHERE id = 1
+2025-05-13 13:09:17.179 UTC [403] DETAIL:  parameters: $1 = '300'
+2025-05-13 13:09:17.437 UTC [403] LOG:  execute <unnamed>: SELECT * FROM Transactions WHERE date = $1 ORDER BY id DESC
+2025-05-13 13:09:17.437 UTC [403] DETAIL:  parameters: $1 = '2025-05-13'
+2025-05-13 13:09:17.438 UTC [403] LOG:  statement: SELECT balance FROM CurrentBalance WHERE id = 1
+2025-05-13 13:09:17.439 UTC [403] LOG:  statement: 
+	      SELECT type, COUNT(*) as count
+	      FROM Transactions
+	      GROUP BY type
+	    
+2025-05-13 13:09:17.445 UTC [406] LOG:  statement: 
+	      SELECT COUNT(DISTINCT name) AS total_users
+	      FROM Transactions
+	    
+2025-05-13 13:09:17.446 UTC [404] LOG:  execute <unnamed>: 
+	      SELECT date, SUM(CAST(amount AS DECIMAL)) as total_amount
+	      FROM Transactions
+	      WHERE date >= $1
+	      GROUP BY date
+	      ORDER BY date ASC
+	    
+2025-05-13 13:09:17.446 UTC [404] DETAIL:  parameters: $1 = '2025-05-07'
+2025-05-13 13:09:17.446 UTC [405] LOG:  execute <unnamed>: 
+	      SELECT 
+	        name,
+	        SUM(CASE WHEN type = 'Cash In' THEN 1 ELSE 0 END) AS cash_in_count,
+	        SUM(CASE WHEN type = 'Cash Out' THEN 1 ELSE 0 END) AS cash_out_count,
+	        SUM(CASE WHEN type = 'Load' THEN 1 ELSE 0 END) AS load_count,
+	        MAX(date) AS last_transaction
+	      FROM Transactions
+	    
+	      GROUP BY name
+	      ORDER BY name ASC
+	      LIMIT $1 OFFSET $2
+	    
+2025-05-13 13:09:17.446 UTC [405] DETAIL:  parameters: $1 = '10', $2 = '0'
+2025-05-13 13:09:17.448 UTC [405] LOG:  statement: SELECT * FROM Transactions ORDER BY id DESC LIMIT 1
+2025-05-13 13:09:30.246 UTC [415] LOG:  execute <unnamed>: INSERT INTO Transactions (date, time, type, amount, name, ref, fee, remarks, created_at, updated_at)
+	       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
+	       RETURNING id
+2025-05-13 13:09:30.246 UTC [415] DETAIL:  parameters: $1 = '2025-05-13', $2 = '15:16', $3 = 'Cash Out', $4 = '500', $5 = 'MA R C.', $6 = '71716', $7 = '10', $8 = 'CLAIMED'
+2025-05-13 13:09:30.248 UTC [415] LOG:  execute <unnamed>: UPDATE CurrentBalance SET balance = balance + $1 WHERE id = 1
+2025-05-13 13:09:30.248 UTC [415] DETAIL:  parameters: $1 = '500'
+2025-05-13 13:09:30.470 UTC [415] LOG:  execute <unnamed>: SELECT * FROM Transactions WHERE date = $1 ORDER BY id DESC
+2025-05-13 13:09:30.470 UTC [415] DETAIL:  parameters: $1 = '2025-05-13'
+2025-05-13 13:09:30.472 UTC [415] LOG:  statement: SELECT balance FROM CurrentBalance WHERE id = 1
+2025-05-13 13:09:30.474 UTC [415] LOG:  execute <unnamed>: 
+	      SELECT date, SUM(CAST(amount AS DECIMAL)) as total_amount
+	      FROM Transactions
+	      WHERE date >= $1
+	      GROUP BY date
+	      ORDER BY date ASC
+	    
+2025-05-13 13:09:30.474 UTC [415] DETAIL:  parameters: $1 = '2025-05-07'
+2025-05-13 13:09:30.478 UTC [415] LOG:  statement: SELECT * FROM Transactions ORDER BY id DESC LIMIT 1
+2025-05-13 13:09:30.481 UTC [416] LOG:  statement: 
+	      SELECT type, COUNT(*) as count
+	      FROM Transactions
+	      GROUP BY type
+	    
+2025-05-13 13:09:30.482 UTC [417] LOG:  execute <unnamed>: 
+	      SELECT 
+	        name,
+	        SUM(CASE WHEN type = 'Cash In' THEN 1 ELSE 0 END) AS cash_in_count,
+	        SUM(CASE WHEN type = 'Cash Out' THEN 1 ELSE 0 END) AS cash_out_count,
+	        SUM(CASE WHEN type = 'Load' THEN 1 ELSE 0 END) AS load_count,
+	        MAX(date) AS last_transaction
+	      FROM Transactions
+	    
+	      GROUP BY name
+	      ORDER BY name ASC
+	      LIMIT $1 OFFSET $2
+	    
+2025-05-13 13:09:30.482 UTC [417] DETAIL:  parameters: $1 = '10', $2 = '0'
+2025-05-13 13:09:30.482 UTC [418] LOG:  statement: 
+	      SELECT COUNT(DISTINCT name) AS total_users
+	      FROM Transactions
+	    
+2025-05-13 13:09:42.630 UTC [435] LOG:  execute <unnamed>: INSERT INTO Transactions (date, time, type, amount, name, ref, fee, remarks, created_at, updated_at)
+	       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
+	       RETURNING id
+2025-05-13 13:09:42.630 UTC [435] DETAIL:  parameters: $1 = '2025-05-13', $2 = '16:57', $3 = 'Cash In', $4 = '200', $5 = 'MA U N.', $6 = '40621', $7 = '10', $8 = 'CUANA'
+2025-05-13 13:09:42.632 UTC [435] LOG:  execute <unnamed>: UPDATE CurrentBalance SET balance = balance + $1 WHERE id = 1
+2025-05-13 13:09:42.632 UTC [435] DETAIL:  parameters: $1 = '-200'
+2025-05-13 13:09:42.836 UTC [435] LOG:  execute <unnamed>: SELECT * FROM Transactions WHERE date = $1 ORDER BY id DESC
+2025-05-13 13:09:42.836 UTC [435] DETAIL:  parameters: $1 = '2025-05-13'
+2025-05-13 13:09:42.838 UTC [435] LOG:  statement: SELECT balance FROM CurrentBalance WHERE id = 1
+2025-05-13 13:09:42.840 UTC [435] LOG:  statement: 
+	      SELECT type, COUNT(*) as count
+	      FROM Transactions
+	      GROUP BY type
+	    
+2025-05-13 13:09:42.844 UTC [435] LOG:  statement: SELECT * FROM Transactions ORDER BY id DESC LIMIT 1
+2025-05-13 13:09:42.849 UTC [438] LOG:  statement: 
+	      SELECT COUNT(DISTINCT name) AS total_users
+	      FROM Transactions
+	    
+2025-05-13 13:09:42.850 UTC [436] LOG:  execute <unnamed>: 
+	      SELECT date, SUM(CAST(amount AS DECIMAL)) as total_amount
+	      FROM Transactions
+	      WHERE date >= $1
+	      GROUP BY date
+	      ORDER BY date ASC
+	    
+2025-05-13 13:09:42.850 UTC [436] DETAIL:  parameters: $1 = '2025-05-07'
+2025-05-13 13:09:42.850 UTC [437] LOG:  execute <unnamed>: 
+	      SELECT 
+	        name,
+	        SUM(CASE WHEN type = 'Cash In' THEN 1 ELSE 0 END) AS cash_in_count,
+	        SUM(CASE WHEN type = 'Cash Out' THEN 1 ELSE 0 END) AS cash_out_count,
+	        SUM(CASE WHEN type = 'Load' THEN 1 ELSE 0 END) AS load_count,
+	        MAX(date) AS last_transaction
+	      FROM Transactions
+	    
+	      GROUP BY name
+	      ORDER BY name ASC
+	      LIMIT $1 OFFSET $2
+	    
+2025-05-13 13:09:42.850 UTC [437] DETAIL:  parameters: $1 = '10', $2 = '0'
+2025-05-13 13:10:03.500 UTC [456] LOG:  execute <unnamed>: INSERT INTO Transactions (date, time, type, amount, name, ref, fee, remarks, created_at, updated_at)
+	       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
+	       RETURNING id
+2025-05-13 13:10:03.500 UTC [456] DETAIL:  parameters: $1 = '2025-05-13', $2 = '17:52', $3 = 'Cash Out', $4 = '500', $5 = 'HA L B.', $6 = '79384', $7 = '10', $8 = 'CLAIMED'
+2025-05-13 13:10:03.503 UTC [456] LOG:  execute <unnamed>: UPDATE CurrentBalance SET balance = balance + $1 WHERE id = 1
+2025-05-13 13:10:03.503 UTC [456] DETAIL:  parameters: $1 = '500'
+2025-05-13 13:10:03.804 UTC [456] LOG:  execute <unnamed>: SELECT * FROM Transactions WHERE date = $1 ORDER BY id DESC
+2025-05-13 13:10:03.804 UTC [456] DETAIL:  parameters: $1 = '2025-05-13'
+2025-05-13 13:10:03.807 UTC [456] LOG:  statement: SELECT balance FROM CurrentBalance WHERE id = 1
+2025-05-13 13:10:03.808 UTC [456] LOG:  statement: 
+	      SELECT type, COUNT(*) as count
+	      FROM Transactions
+	      GROUP BY type
+	    
+2025-05-13 13:10:03.813 UTC [456] LOG:  statement: SELECT * FROM Transactions ORDER BY id DESC LIMIT 1
+2025-05-13 13:10:03.816 UTC [458] LOG:  execute <unnamed>: 
+	      SELECT 
+	        name,
+	        SUM(CASE WHEN type = 'Cash In' THEN 1 ELSE 0 END) AS cash_in_count,
+	        SUM(CASE WHEN type = 'Cash Out' THEN 1 ELSE 0 END) AS cash_out_count,
+	        SUM(CASE WHEN type = 'Load' THEN 1 ELSE 0 END) AS load_count,
+	        MAX(date) AS last_transaction
+	      FROM Transactions
+	    
+	      GROUP BY name
+	      ORDER BY name ASC
+	      LIMIT $1 OFFSET $2
+	    
+2025-05-13 13:10:03.816 UTC [458] DETAIL:  parameters: $1 = '10', $2 = '0'
+2025-05-13 13:10:03.816 UTC [457] LOG:  execute <unnamed>: 
+	      SELECT date, SUM(CAST(amount AS DECIMAL)) as total_amount
+	      FROM Transactions
+	      WHERE date >= $1
+	      GROUP BY date
+	      ORDER BY date ASC
+	    
+2025-05-13 13:10:03.816 UTC [457] DETAIL:  parameters: $1 = '2025-05-07'
+2025-05-13 13:10:03.816 UTC [459] LOG:  statement: 
+	      SELECT COUNT(DISTINCT name) AS total_users
+	      FROM Transactions
+	    
+2025-05-13 13:10:25.403 UTC [476] LOG:  execute <unnamed>: INSERT INTO Transactions (date, time, type, amount, name, ref, fee, remarks, created_at, updated_at)
+	       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
+	       RETURNING id
+2025-05-13 13:10:25.403 UTC [476] DETAIL:  parameters: $1 = '2025-05-13', $2 = '18:04', $3 = 'Cash In', $4 = '200', $5 = 'MA S D.', $6 = '94027', $7 = '10', $8 = 'CUANA'
+2025-05-13 13:10:25.405 UTC [476] LOG:  execute <unnamed>: UPDATE CurrentBalance SET balance = balance + $1 WHERE id = 1
+2025-05-13 13:10:25.405 UTC [476] DETAIL:  parameters: $1 = '-200'
+2025-05-13 13:10:25.611 UTC [476] LOG:  execute <unnamed>: SELECT * FROM Transactions WHERE date = $1 ORDER BY id DESC
+2025-05-13 13:10:25.611 UTC [476] DETAIL:  parameters: $1 = '2025-05-13'
+2025-05-13 13:10:25.613 UTC [476] LOG:  statement: SELECT balance FROM CurrentBalance WHERE id = 1
+2025-05-13 13:10:25.615 UTC [476] LOG:  statement: 
+	      SELECT type, COUNT(*) as count
+	      FROM Transactions
+	      GROUP BY type
+	    
+2025-05-13 13:10:25.618 UTC [476] LOG:  statement: SELECT * FROM Transactions ORDER BY id DESC LIMIT 1
+2025-05-13 13:10:25.623 UTC [479] LOG:  statement: 
+	      SELECT COUNT(DISTINCT name) AS total_users
+	      FROM Transactions
+	    
+2025-05-13 13:10:25.623 UTC [477] LOG:  execute <unnamed>: 
+	      SELECT date, SUM(CAST(amount AS DECIMAL)) as total_amount
+	      FROM Transactions
+	      WHERE date >= $1
+	      GROUP BY date
+	      ORDER BY date ASC
+	    
+2025-05-13 13:10:25.623 UTC [477] DETAIL:  parameters: $1 = '2025-05-07'
+2025-05-13 13:10:25.623 UTC [478] LOG:  execute <unnamed>: 
+	      SELECT 
+	        name,
+	        SUM(CASE WHEN type = 'Cash In' THEN 1 ELSE 0 END) AS cash_in_count,
+	        SUM(CASE WHEN type = 'Cash Out' THEN 1 ELSE 0 END) AS cash_out_count,
+	        SUM(CASE WHEN type = 'Load' THEN 1 ELSE 0 END) AS load_count,
+	        MAX(date) AS last_transaction
+	      FROM Transactions
+	    
+	      GROUP BY name
+	      ORDER BY name ASC
+	      LIMIT $1 OFFSET $2
+	    
+2025-05-13 13:10:25.623 UTC [478] DETAIL:  parameters: $1 = '10', $2 = '0'
+2025-05-13 13:11:55.963 UTC [505] LOG:  execute <unnamed>: SELECT * FROM Transactions WHERE date = $1 ORDER BY id DESC
+2025-05-13 13:11:55.963 UTC [505] DETAIL:  parameters: $1 = '2025-05-13'
+2025-05-13 13:11:55.968 UTC [505] LOG:  statement: SELECT * FROM Transactions ORDER BY id DESC LIMIT 1
+2025-05-13 13:11:42.261 UTC [538] LOG:  execute <unnamed>: SELECT * FROM Transactions WHERE id = $1
+2025-05-13 13:11:42.261 UTC [538] DETAIL:  parameters: $1 = '460'
+2025-05-13 13:11:42.262 UTC [538] LOG:  execute <unnamed>: UPDATE CurrentBalance SET balance = balance + $1 WHERE id = 1
+2025-05-13 13:11:42.262 UTC [538] DETAIL:  parameters: $1 = '200'
+2025-05-13 13:11:42.264 UTC [538] LOG:  execute <unnamed>: DELETE FROM Transactions WHERE id = $1
+2025-05-13 13:11:42.264 UTC [538] DETAIL:  parameters: $1 = '460'
+2025-05-13 13:11:42.975 UTC [538] LOG:  execute <unnamed>: SELECT * FROM Transactions WHERE date = $1 ORDER BY id DESC
+2025-05-13 13:11:42.975 UTC [538] DETAIL:  parameters: $1 = '2025-05-13'
+2025-05-13 13:11:42.976 UTC [538] LOG:  statement: SELECT balance FROM CurrentBalance WHERE id = 1
+2025-05-13 13:11:42.978 UTC [538] LOG:  execute <unnamed>: 
+	      SELECT date, SUM(CAST(amount AS DECIMAL)) as total_amount
+	      FROM Transactions
+	      WHERE date >= $1
+	      GROUP BY date
+	      ORDER BY date ASC
+	    
+2025-05-13 13:11:42.978 UTC [538] DETAIL:  parameters: $1 = '2025-05-07'
+2025-05-13 13:11:42.980 UTC [538] LOG:  execute <unnamed>: 
+	      SELECT 
+	        name,
+	        SUM(CASE WHEN type = 'Cash In' THEN 1 ELSE 0 END) AS cash_in_count,
+	        SUM(CASE WHEN type = 'Cash Out' THEN 1 ELSE 0 END) AS cash_out_count,
+	        SUM(CASE WHEN type = 'Load' THEN 1 ELSE 0 END) AS load_count,
+	        MAX(date) AS last_transaction
+	      FROM Transactions
+	    
+	      GROUP BY name
+	      ORDER BY name ASC
+	      LIMIT $1 OFFSET $2
+	    
+2025-05-13 13:11:42.980 UTC [538] DETAIL:  parameters: $1 = '10', $2 = '0'
+2025-05-13 13:11:42.984 UTC [547] LOG:  statement: 
+	      SELECT type, COUNT(*) as count
+	      FROM Transactions
+	      GROUP BY type
+	    
+2025-05-13 13:11:42.985 UTC [548] LOG:  statement: 
+	      SELECT COUNT(DISTINCT name) AS total_users
+	      FROM Transactions
+	    
+2025-05-13 13:11:42.989 UTC [548] LOG:  statement: SELECT * FROM Transactions ORDER BY id DESC LIMIT 1
+2025-05-13 13:11:44.267 UTC [548] LOG:  execute <unnamed>: SELECT * FROM Transactions WHERE id = $1
+2025-05-13 13:11:44.267 UTC [548] DETAIL:  parameters: $1 = '459'
+2025-05-13 13:11:44.268 UTC [548] LOG:  execute <unnamed>: UPDATE CurrentBalance SET balance = balance + $1 WHERE id = 1
+2025-05-13 13:11:44.268 UTC [548] DETAIL:  parameters: $1 = '-500'
+2025-05-13 13:11:44.270 UTC [548] LOG:  execute <unnamed>: DELETE FROM Transactions WHERE id = $1
+2025-05-13 13:11:44.270 UTC [548] DETAIL:  parameters: $1 = '459'
+2025-05-13 13:11:44.792 UTC [548] LOG:  statement: SELECT balance FROM CurrentBalance WHERE id = 1
+2025-05-13 13:11:44.793 UTC [547] LOG:  execute <unnamed>: SELECT * FROM Transactions WHERE date = $1 ORDER BY id DESC
+2025-05-13 13:11:44.793 UTC [547] DETAIL:  parameters: $1 = '2025-05-13'
+2025-05-13 13:11:44.793 UTC [538] LOG:  execute <unnamed>: 
+	      SELECT date, SUM(CAST(amount AS DECIMAL)) as total_amount
+	      FROM Transactions
+	      WHERE date >= $1
+	      GROUP BY date
+	      ORDER BY date ASC
+	    
+2025-05-13 13:11:44.793 UTC [538] DETAIL:  parameters: $1 = '2025-05-07'
+2025-05-13 13:11:44.794 UTC [548] LOG:  statement: 
+	      SELECT type, COUNT(*) as count
+	      FROM Transactions
+	      GROUP BY type
+	    
+2025-05-13 13:11:44.795 UTC [538] LOG:  statement: 
+	      SELECT COUNT(DISTINCT name) AS total_users
+	      FROM Transactions
+	    
+2025-05-13 13:11:44.795 UTC [548] LOG:  execute <unnamed>: 
+	      SELECT 
+	        name,
+	        SUM(CASE WHEN type = 'Cash In' THEN 1 ELSE 0 END) AS cash_in_count,
+	        SUM(CASE WHEN type = 'Cash Out' THEN 1 ELSE 0 END) AS cash_out_count,
+	        SUM(CASE WHEN type = 'Load' THEN 1 ELSE 0 END) AS load_count,
+	        MAX(date) AS last_transaction
+	      FROM Transactions
+	    
+	      GROUP BY name
+	      ORDER BY name ASC
+	      LIMIT $1 OFFSET $2
+	    
+2025-05-13 13:11:44.795 UTC [548] DETAIL:  parameters: $1 = '10', $2 = '0'
+2025-05-13 13:11:44.801 UTC [548] LOG:  statement: SELECT * FROM Transactions ORDER BY id DESC LIMIT 1
+2025-05-13 13:11:46.213 UTC [548] LOG:  execute <unnamed>: SELECT * FROM Transactions WHERE id = $1
+2025-05-13 13:11:46.213 UTC [548] DETAIL:  parameters: $1 = '458'
+2025-05-13 13:11:46.213 UTC [548] LOG:  execute <unnamed>: UPDATE CurrentBalance SET balance = balance + $1 WHERE id = 1
+2025-05-13 13:11:46.213 UTC [548] DETAIL:  parameters: $1 = '200'
+2025-05-13 13:11:46.216 UTC [548] LOG:  execute <unnamed>: DELETE FROM Transactions WHERE id = $1
+2025-05-13 13:11:46.216 UTC [548] DETAIL:  parameters: $1 = '458'
+2025-05-13 13:11:46.613 UTC [548] LOG:  execute <unnamed>: SELECT * FROM Transactions WHERE date = $1 ORDER BY id DESC
+2025-05-13 13:11:46.613 UTC [548] DETAIL:  parameters: $1 = '2025-05-13'
+2025-05-13 13:11:46.613 UTC [538] LOG:  statement: SELECT balance FROM CurrentBalance WHERE id = 1
+2025-05-13 13:11:46.613 UTC [547] LOG:  execute <unnamed>: 
+	      SELECT date, SUM(CAST(amount AS DECIMAL)) as total_amount
+	      FROM Transactions
+	      WHERE date >= $1
+	      GROUP BY date
+	      ORDER BY date ASC
+	    
+2025-05-13 13:11:46.613 UTC [547] DETAIL:  parameters: $1 = '2025-05-07'
+2025-05-13 13:11:46.621 UTC [547] LOG:  statement: SELECT * FROM Transactions ORDER BY id DESC LIMIT 1
+2025-05-13 13:11:46.624 UTC [552] LOG:  statement: 
+	      SELECT COUNT(DISTINCT name) AS total_users
+	      FROM Transactions
+	    
+2025-05-13 13:11:46.624 UTC [550] LOG:  statement: 
+	      SELECT type, COUNT(*) as count
+	      FROM Transactions
+	      GROUP BY type
+	    
+2025-05-13 13:11:46.625 UTC [551] LOG:  execute <unnamed>: 
+	      SELECT 
+	        name,
+	        SUM(CASE WHEN type = 'Cash In' THEN 1 ELSE 0 END) AS cash_in_count,
+	        SUM(CASE WHEN type = 'Cash Out' THEN 1 ELSE 0 END) AS cash_out_count,
+	        SUM(CASE WHEN type = 'Load' THEN 1 ELSE 0 END) AS load_count,
+	        MAX(date) AS last_transaction
+	      FROM Transactions
+	    
+	      GROUP BY name
+	      ORDER BY name ASC
+	      LIMIT $1 OFFSET $2
+	    
+2025-05-13 13:11:46.625 UTC [551] DETAIL:  parameters: $1 = '10', $2 = '0'
+2025-05-13 13:11:48.356 UTC [550] LOG:  execute <unnamed>: SELECT * FROM Transactions WHERE id = $1
+2025-05-13 13:11:48.356 UTC [550] DETAIL:  parameters: $1 = '457'
+2025-05-13 13:11:48.357 UTC [550] LOG:  execute <unnamed>: UPDATE CurrentBalance SET balance = balance + $1 WHERE id = 1
+2025-05-13 13:11:48.357 UTC [550] DETAIL:  parameters: $1 = '-500'
+2025-05-13 13:11:48.361 UTC [550] LOG:  execute <unnamed>: DELETE FROM Transactions WHERE id = $1
+2025-05-13 13:11:48.361 UTC [550] DETAIL:  parameters: $1 = '457'
+2025-05-13 13:11:48.676 UTC [552] LOG:  statement: SELECT balance FROM CurrentBalance WHERE id = 1
+2025-05-13 13:11:48.676 UTC [550] LOG:  execute <unnamed>: SELECT * FROM Transactions WHERE date = $1 ORDER BY id DESC
+2025-05-13 13:11:48.676 UTC [550] DETAIL:  parameters: $1 = '2025-05-13'
+2025-05-13 13:11:48.676 UTC [551] LOG:  execute <unnamed>: 
+	      SELECT date, SUM(CAST(amount AS DECIMAL)) as total_amount
+	      FROM Transactions
+	      WHERE date >= $1
+	      GROUP BY date
+	      ORDER BY date ASC
+	    
+2025-05-13 13:11:48.676 UTC [551] DETAIL:  parameters: $1 = '2025-05-07'
+2025-05-13 13:11:48.676 UTC [547] LOG:  statement: 
+	      SELECT type, COUNT(*) as count
+	      FROM Transactions
+	      GROUP BY type
+	    
+2025-05-13 13:11:48.677 UTC [548] LOG:  statement: 
+	      SELECT COUNT(DISTINCT name) AS total_users
+	      FROM Transactions
+	    
+2025-05-13 13:11:48.677 UTC [538] LOG:  execute <unnamed>: 
+	      SELECT 
+	        name,
+	        SUM(CASE WHEN type = 'Cash In' THEN 1 ELSE 0 END) AS cash_in_count,
+	        SUM(CASE WHEN type = 'Cash Out' THEN 1 ELSE 0 END) AS cash_out_count,
+	        SUM(CASE WHEN type = 'Load' THEN 1 ELSE 0 END) AS load_count,
+	        MAX(date) AS last_transaction
+	      FROM Transactions
+	    
+	      GROUP BY name
+	      ORDER BY name ASC
+	      LIMIT $1 OFFSET $2
+	    
+2025-05-13 13:11:48.677 UTC [538] DETAIL:  parameters: $1 = '10', $2 = '0'
+2025-05-13 13:11:48.684 UTC [538] LOG:  statement: SELECT * FROM Transactions ORDER BY id DESC LIMIT 1
+2025-05-13 13:11:49.512 UTC [538] LOG:  execute <unnamed>: SELECT * FROM Transactions WHERE id = $1
+2025-05-13 13:11:49.512 UTC [538] DETAIL:  parameters: $1 = '456'
+2025-05-13 13:11:49.512 UTC [538] LOG:  execute <unnamed>: UPDATE CurrentBalance SET balance = balance + $1 WHERE id = 1
+2025-05-13 13:11:49.512 UTC [538] DETAIL:  parameters: $1 = '-300'
+2025-05-13 13:11:49.514 UTC [538] LOG:  execute <unnamed>: DELETE FROM Transactions WHERE id = $1
+2025-05-13 13:11:49.514 UTC [538] DETAIL:  parameters: $1 = '456'
+2025-05-13 13:11:49.908 UTC [538] LOG:  execute <unnamed>: SELECT * FROM Transactions WHERE date = $1 ORDER BY id DESC
+2025-05-13 13:11:49.908 UTC [538] DETAIL:  parameters: $1 = '2025-05-13'
+2025-05-13 13:11:49.908 UTC [548] LOG:  statement: SELECT balance FROM CurrentBalance WHERE id = 1
+2025-05-13 13:11:49.909 UTC [551] LOG:  execute <unnamed>: 
+	      SELECT date, SUM(CAST(amount AS DECIMAL)) as total_amount
+	      FROM Transactions
+	      WHERE date >= $1
+	      GROUP BY date
+	      ORDER BY date ASC
+	    
+2025-05-13 13:11:49.909 UTC [551] DETAIL:  parameters: $1 = '2025-05-07'
+2025-05-13 13:11:49.909 UTC [547] LOG:  statement: 
+	      SELECT type, COUNT(*) as count
+	      FROM Transactions
+	      GROUP BY type
+	    
+2025-05-13 13:11:49.909 UTC [550] LOG:  statement: 
+	      SELECT COUNT(DISTINCT name) AS total_users
+	      FROM Transactions
+	    
+2025-05-13 13:11:49.911 UTC [552] LOG:  execute <unnamed>: 
+	      SELECT 
+	        name,
+	        SUM(CASE WHEN type = 'Cash In' THEN 1 ELSE 0 END) AS cash_in_count,
+	        SUM(CASE WHEN type = 'Cash Out' THEN 1 ELSE 0 END) AS cash_out_count,
+	        SUM(CASE WHEN type = 'Load' THEN 1 ELSE 0 END) AS load_count,
+	        MAX(date) AS last_transaction
+	      FROM Transactions
+	    
+	      GROUP BY name
+	      ORDER BY name ASC
+	      LIMIT $1 OFFSET $2
+	    
+2025-05-13 13:11:49.911 UTC [552] DETAIL:  parameters: $1 = '10', $2 = '0'
+2025-05-13 13:11:49.915 UTC [552] LOG:  statement: SELECT * FROM Transactions ORDER BY id DESC LIMIT 1
+2025-05-13 13:13:45.084 UTC [28] LOG:  checkpoint starting: time
+2025-05-13 13:13:45.536 UTC [28] LOG:  checkpoint complete: wrote 5 buffers (0.0%); 0 WAL file(s) added, 0 removed, 0 recycled; write=0.417 s, sync=0.023 s, total=0.453 s; sync files=5, longest=0.013 s, average=0.005 s; distance=25 kB, estimate=25 kB; lsn=0/1A68F28, redo lsn=0/1A68EF0
+2025-05-13 13:56:52.963 UTC [2751] LOG:  statement: 
+	      SELECT type, COUNT(*) as count
+	      FROM Transactions
+	      GROUP BY type
+	    
+2025-05-13 13:56:52.963 UTC [2753] LOG:  statement: SELECT balance FROM CurrentBalance WHERE id = 1
+2025-05-13 13:56:52.972 UTC [2752] LOG:  execute <unnamed>: SELECT * FROM Transactions WHERE date = $1 ORDER BY id DESC
+2025-05-13 13:56:52.972 UTC [2752] DETAIL:  parameters: $1 = '2025-05-13'
+2025-05-13 13:56:52.973 UTC [2750] LOG:  execute <unnamed>: 
+	      SELECT date, SUM(CAST(amount AS DECIMAL)) as total_amount
+	      FROM Transactions
+	      WHERE date >= $1
+	      GROUP BY date
+	      ORDER BY date ASC
+	    
+2025-05-13 13:56:52.973 UTC [2750] DETAIL:  parameters: $1 = '2025-05-07'
+2025-05-13 13:56:52.988 UTC [2750] LOG:  statement: SELECT * FROM Transactions ORDER BY id DESC LIMIT 1
+2025-05-13 13:57:35.762 UTC [2786] LOG:  execute <unnamed>: INSERT INTO Transactions (date, time, type, amount, name, ref, fee, remarks, created_at, updated_at)
+	       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
+	       RETURNING id
+2025-05-13 13:57:35.762 UTC [2786] DETAIL:  parameters: $1 = '2025-05-13', $2 = '12:59', $3 = 'Load', $4 = '50', $5 = 'REG LOAD', $6 = '38664', $7 = '5', $8 = 'CUANA - LOAD'
+2025-05-13 13:57:35.769 UTC [2786] LOG:  execute <unnamed>: UPDATE CurrentBalance SET balance = balance + $1 WHERE id = 1
+2025-05-13 13:57:35.769 UTC [2786] DETAIL:  parameters: $1 = '-50'
+2025-05-13 13:57:35.983 UTC [2786] LOG:  execute <unnamed>: SELECT * FROM Transactions WHERE date = $1 ORDER BY id DESC
+2025-05-13 13:57:35.983 UTC [2786] DETAIL:  parameters: $1 = '2025-05-13'
+2025-05-13 13:57:35.985 UTC [2786] LOG:  statement: SELECT balance FROM CurrentBalance WHERE id = 1
+2025-05-13 13:57:35.987 UTC [2786] LOG:  statement: 
+	      SELECT type, COUNT(*) as count
+	      FROM Transactions
+	      GROUP BY type
+	    
+2025-05-13 13:57:35.990 UTC [2786] LOG:  statement: SELECT * FROM Transactions ORDER BY id DESC LIMIT 1
+2025-05-13 13:57:35.995 UTC [2789] LOG:  statement: 
+	      SELECT COUNT(DISTINCT name) AS total_users
+	      FROM Transactions
+	    
+2025-05-13 13:57:35.995 UTC [2787] LOG:  execute <unnamed>: 
+	      SELECT date, SUM(CAST(amount AS DECIMAL)) as total_amount
+	      FROM Transactions
+	      WHERE date >= $1
+	      GROUP BY date
+	      ORDER BY date ASC
+	    
+2025-05-13 13:57:35.995 UTC [2787] DETAIL:  parameters: $1 = '2025-05-07'
+2025-05-13 13:57:35.997 UTC [2788] LOG:  execute <unnamed>: 
+	      SELECT 
+	        name,
+	        SUM(CASE WHEN type = 'Cash In' THEN 1 ELSE 0 END) AS cash_in_count,
+	        SUM(CASE WHEN type = 'Cash Out' THEN 1 ELSE 0 END) AS cash_out_count,
+	        SUM(CASE WHEN type = 'Load' THEN 1 ELSE 0 END) AS load_count,
+	        MAX(date) AS last_transaction
+	      FROM Transactions
+	    
+	      GROUP BY name
+	      ORDER BY name ASC
+	      LIMIT $1 OFFSET $2
+	    
+2025-05-13 13:57:35.997 UTC [2788] DETAIL:  parameters: $1 = '10', $2 = '0'
+2025-05-13 13:57:48.838 UTC [2798] LOG:  execute <unnamed>: INSERT INTO Transactions (date, time, type, amount, name, ref, fee, remarks, created_at, updated_at)
+	       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
+	       RETURNING id
+2025-05-13 13:57:48.838 UTC [2798] DETAIL:  parameters: $1 = '2025-05-13', $2 = '13:21', $3 = 'Cash Out', $4 = '300', $5 = 'FE N T.', $6 = '16113', $7 = '10', $8 = 'CLAIMED'
+2025-05-13 13:57:48.840 UTC [2798] LOG:  execute <unnamed>: UPDATE CurrentBalance SET balance = balance + $1 WHERE id = 1
+2025-05-13 13:57:48.840 UTC [2798] DETAIL:  parameters: $1 = '300'
+2025-05-13 13:57:49.061 UTC [2798] LOG:  execute <unnamed>: SELECT * FROM Transactions WHERE date = $1 ORDER BY id DESC
+2025-05-13 13:57:49.061 UTC [2798] DETAIL:  parameters: $1 = '2025-05-13'
+2025-05-13 13:57:49.062 UTC [2798] LOG:  statement: SELECT balance FROM CurrentBalance WHERE id = 1
+2025-05-13 13:57:49.064 UTC [2798] LOG:  execute <unnamed>: 
+	      SELECT date, SUM(CAST(amount AS DECIMAL)) as total_amount
+	      FROM Transactions
+	      WHERE date >= $1
+	      GROUP BY date
+	      ORDER BY date ASC
+	    
+2025-05-13 13:57:49.064 UTC [2798] DETAIL:  parameters: $1 = '2025-05-07'
+2025-05-13 13:57:49.067 UTC [2798] LOG:  execute <unnamed>: 
+	      SELECT 
+	        name,
+	        SUM(CASE WHEN type = 'Cash In' THEN 1 ELSE 0 END) AS cash_in_count,
+	        SUM(CASE WHEN type = 'Cash Out' THEN 1 ELSE 0 END) AS cash_out_count,
+	        SUM(CASE WHEN type = 'Load' THEN 1 ELSE 0 END) AS load_count,
+	        MAX(date) AS last_transaction
+	      FROM Transactions
+	    
+	      GROUP BY name
+	      ORDER BY name ASC
+	      LIMIT $1 OFFSET $2
+	    
+2025-05-13 13:57:49.067 UTC [2798] DETAIL:  parameters: $1 = '10', $2 = '0'
+2025-05-13 13:57:49.069 UTC [2798] LOG:  statement: SELECT * FROM Transactions ORDER BY id DESC LIMIT 1
+2025-05-13 13:57:49.073 UTC [2799] LOG:  statement: 
+	      SELECT type, COUNT(*) as count
+	      FROM Transactions
+	      GROUP BY type
+	    
+2025-05-13 13:57:49.073 UTC [2800] LOG:  statement: 
+	      SELECT COUNT(DISTINCT name) AS total_users
+	      FROM Transactions
+	    
+2025-05-13 13:58:02.716 UTC [2818] LOG:  execute <unnamed>: INSERT INTO Transactions (date, time, type, amount, name, ref, fee, remarks, created_at, updated_at)
+	       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
+	       RETURNING id
+2025-05-13 13:58:02.716 UTC [2818] DETAIL:  parameters: $1 = '2025-05-13', $2 = '15:16', $3 = 'Cash Out', $4 = '500', $5 = 'MA R C.', $6 = '71716', $7 = '10', $8 = 'CLAIMED'
+2025-05-13 13:58:02.718 UTC [2818] LOG:  execute <unnamed>: UPDATE CurrentBalance SET balance = balance + $1 WHERE id = 1
+2025-05-13 13:58:02.718 UTC [2818] DETAIL:  parameters: $1 = '500'
+2025-05-13 13:58:02.956 UTC [2818] LOG:  execute <unnamed>: SELECT * FROM Transactions WHERE date = $1 ORDER BY id DESC
+2025-05-13 13:58:02.956 UTC [2818] DETAIL:  parameters: $1 = '2025-05-13'
+2025-05-13 13:58:02.957 UTC [2818] LOG:  statement: SELECT balance FROM CurrentBalance WHERE id = 1
+2025-05-13 13:58:02.959 UTC [2818] LOG:  execute <unnamed>: 
+	      SELECT date, SUM(CAST(amount AS DECIMAL)) as total_amount
+	      FROM Transactions
+	      WHERE date >= $1
+	      GROUP BY date
+	      ORDER BY date ASC
+	    
+2025-05-13 13:58:02.959 UTC [2818] DETAIL:  parameters: $1 = '2025-05-07'
+2025-05-13 13:58:02.961 UTC [2818] LOG:  execute <unnamed>: 
+	      SELECT 
+	        name,
+	        SUM(CASE WHEN type = 'Cash In' THEN 1 ELSE 0 END) AS cash_in_count,
+	        SUM(CASE WHEN type = 'Cash Out' THEN 1 ELSE 0 END) AS cash_out_count,
+	        SUM(CASE WHEN type = 'Load' THEN 1 ELSE 0 END) AS load_count,
+	        MAX(date) AS last_transaction
+	      FROM Transactions
+	    
+	      GROUP BY name
+	      ORDER BY name ASC
+	      LIMIT $1 OFFSET $2
+	    
+2025-05-13 13:58:02.961 UTC [2818] DETAIL:  parameters: $1 = '10', $2 = '0'
+2025-05-13 13:58:02.965 UTC [2818] LOG:  statement: SELECT * FROM Transactions ORDER BY id DESC LIMIT 1
+2025-05-13 13:58:02.965 UTC [2819] LOG:  statement: 
+	      SELECT type, COUNT(*) as count
+	      FROM Transactions
+	      GROUP BY type
+	    
+2025-05-13 13:58:02.966 UTC [2820] LOG:  statement: 
+	      SELECT COUNT(DISTINCT name) AS total_users
+	      FROM Transactions
+	    
+2025-05-13 13:58:15.957 UTC [2829] LOG:  execute <unnamed>: INSERT INTO Transactions (date, time, type, amount, name, ref, fee, remarks, created_at, updated_at)
+	       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
+	       RETURNING id
+2025-05-13 13:58:15.957 UTC [2829] DETAIL:  parameters: $1 = '2025-05-13', $2 = '16:57', $3 = 'Cash In', $4 = '200', $5 = 'MA U N.', $6 = '40621', $7 = '10', $8 = 'CUANA'
+2025-05-13 13:58:15.959 UTC [2829] LOG:  execute <unnamed>: UPDATE CurrentBalance SET balance = balance + $1 WHERE id = 1
+2025-05-13 13:58:15.959 UTC [2829] DETAIL:  parameters: $1 = '-200'
+2025-05-13 13:58:16.228 UTC [2829] LOG:  statement: SELECT balance FROM CurrentBalance WHERE id = 1
+2025-05-13 13:58:16.230 UTC [2829] LOG:  execute <unnamed>: 
+	      SELECT date, SUM(CAST(amount AS DECIMAL)) as total_amount
+	      FROM Transactions
+	      WHERE date >= $1
+	      GROUP BY date
+	      ORDER BY date ASC
+	    
+2025-05-13 13:58:16.230 UTC [2829] DETAIL:  parameters: $1 = '2025-05-07'
+2025-05-13 13:58:16.233 UTC [2829] LOG:  execute <unnamed>: 
+	      SELECT 
+	        name,
+	        SUM(CASE WHEN type = 'Cash In' THEN 1 ELSE 0 END) AS cash_in_count,
+	        SUM(CASE WHEN type = 'Cash Out' THEN 1 ELSE 0 END) AS cash_out_count,
+	        SUM(CASE WHEN type = 'Load' THEN 1 ELSE 0 END) AS load_count,
+	        MAX(date) AS last_transaction
+	      FROM Transactions
+	    
+	      GROUP BY name
+	      ORDER BY name ASC
+	      LIMIT $1 OFFSET $2
+	    
+2025-05-13 13:58:16.233 UTC [2829] DETAIL:  parameters: $1 = '10', $2 = '0'
+2025-05-13 13:58:16.237 UTC [2830] LOG:  statement: 
+	      SELECT type, COUNT(*) as count
+	      FROM Transactions
+	      GROUP BY type
+	    
+2025-05-13 13:58:16.238 UTC [2831] LOG:  statement: 
+	      SELECT COUNT(DISTINCT name) AS total_users
+	      FROM Transactions
+	    
+2025-05-13 13:58:16.239 UTC [2832] LOG:  execute <unnamed>: SELECT * FROM Transactions WHERE date = $1 ORDER BY id DESC
+2025-05-13 13:58:16.239 UTC [2832] DETAIL:  parameters: $1 = '2025-05-13'
+2025-05-13 13:58:16.244 UTC [2832] LOG:  statement: SELECT * FROM Transactions ORDER BY id DESC LIMIT 1
+2025-05-13 13:58:46.338 UTC [28] LOG:  checkpoint starting: time
+2025-05-13 13:58:46.771 UTC [28] LOG:  checkpoint complete: wrote 5 buffers (0.0%); 0 WAL file(s) added, 0 removed, 0 recycled; write=0.414 s, sync=0.005 s, total=0.435 s; sync files=5, longest=0.004 s, average=0.001 s; distance=23 kB, estimate=25 kB; lsn=0/1A6ECB8, redo lsn=0/1A6EC80
+2025-05-13 14:00:30.492 UTC [2939] LOG:  execute <unnamed>: INSERT INTO Transactions (date, time, type, amount, name, ref, fee, remarks, created_at, updated_at)
+	       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
+	       RETURNING id
+2025-05-13 14:00:30.492 UTC [2939] DETAIL:  parameters: $1 = '2025-05-13', $2 = '17:52', $3 = 'Cash Out', $4 = '500', $5 = 'HA L B.', $6 = '71716', $7 = '10', $8 = 'CLAIMED'
+2025-05-13 14:00:30.495 UTC [2939] LOG:  execute <unnamed>: UPDATE CurrentBalance SET balance = balance + $1 WHERE id = 1
+2025-05-13 14:00:30.495 UTC [2939] DETAIL:  parameters: $1 = '500'
+2025-05-13 14:00:30.719 UTC [2939] LOG:  execute <unnamed>: SELECT * FROM Transactions WHERE date = $1 ORDER BY id DESC
+2025-05-13 14:00:30.719 UTC [2939] DETAIL:  parameters: $1 = '2025-05-13'
+2025-05-13 14:00:30.721 UTC [2939] LOG:  statement: SELECT balance FROM CurrentBalance WHERE id = 1
+2025-05-13 14:00:30.722 UTC [2939] LOG:  execute <unnamed>: 
+	      SELECT date, SUM(CAST(amount AS DECIMAL)) as total_amount
+	      FROM Transactions
+	      WHERE date >= $1
+	      GROUP BY date
+	      ORDER BY date ASC
+	    
+2025-05-13 14:00:30.722 UTC [2939] DETAIL:  parameters: $1 = '2025-05-07'
+2025-05-13 14:00:30.724 UTC [2939] LOG:  execute <unnamed>: 
+	      SELECT 
+	        name,
+	        SUM(CASE WHEN type = 'Cash In' THEN 1 ELSE 0 END) AS cash_in_count,
+	        SUM(CASE WHEN type = 'Cash Out' THEN 1 ELSE 0 END) AS cash_out_count,
+	        SUM(CASE WHEN type = 'Load' THEN 1 ELSE 0 END) AS load_count,
+	        MAX(date) AS last_transaction
+	      FROM Transactions
+	    
+	      GROUP BY name
+	      ORDER BY name ASC
+	      LIMIT $1 OFFSET $2
+	    
+2025-05-13 14:00:30.724 UTC [2939] DETAIL:  parameters: $1 = '10', $2 = '0'
+2025-05-13 14:00:30.727 UTC [2939] LOG:  statement: SELECT * FROM Transactions ORDER BY id DESC LIMIT 1
+2025-05-13 14:00:30.728 UTC [2940] LOG:  statement: 
+	      SELECT type, COUNT(*) as count
+	      FROM Transactions
+	      GROUP BY type
+	    
+2025-05-13 14:00:30.729 UTC [2941] LOG:  statement: 
+	      SELECT COUNT(DISTINCT name) AS total_users
+	      FROM Transactions
+	    
+2025-05-13 14:00:53.916 UTC [2967] LOG:  execute <unnamed>: INSERT INTO Transactions (date, time, type, amount, name, ref, fee, remarks, created_at, updated_at)
+	       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
+	       RETURNING id
+2025-05-13 14:00:53.916 UTC [2967] DETAIL:  parameters: $1 = '2025-05-13', $2 = '18:09', $3 = 'Cash In', $4 = '200', $5 = 'MA S D.', $6 = '94027', $7 = '10', $8 = 'CUANA'
+2025-05-13 14:00:53.918 UTC [2967] LOG:  execute <unnamed>: UPDATE CurrentBalance SET balance = balance + $1 WHERE id = 1
+2025-05-13 14:00:53.918 UTC [2967] DETAIL:  parameters: $1 = '-200'
+2025-05-13 14:00:54.205 UTC [2967] LOG:  execute <unnamed>: SELECT * FROM Transactions WHERE date = $1 ORDER BY id DESC
+2025-05-13 14:00:54.205 UTC [2967] DETAIL:  parameters: $1 = '2025-05-13'
+2025-05-13 14:00:54.207 UTC [2967] LOG:  statement: SELECT balance FROM CurrentBalance WHERE id = 1
+2025-05-13 14:00:54.208 UTC [2967] LOG:  statement: 
+	      SELECT type, COUNT(*) as count
+	      FROM Transactions
+	      GROUP BY type
+	    
+2025-05-13 14:00:54.211 UTC [2967] LOG:  execute <unnamed>: 
+	      SELECT 
+	        name,
+	        SUM(CASE WHEN type = 'Cash In' THEN 1 ELSE 0 END) AS cash_in_count,
+	        SUM(CASE WHEN type = 'Cash Out' THEN 1 ELSE 0 END) AS cash_out_count,
+	        SUM(CASE WHEN type = 'Load' THEN 1 ELSE 0 END) AS load_count,
+	        MAX(date) AS last_transaction
+	      FROM Transactions
+	    
+	      GROUP BY name
+	      ORDER BY name ASC
+	      LIMIT $1 OFFSET $2
+	    
+2025-05-13 14:00:54.211 UTC [2967] DETAIL:  parameters: $1 = '10', $2 = '0'
+2025-05-13 14:00:54.215 UTC [2968] LOG:  execute <unnamed>: 
+	      SELECT date, SUM(CAST(amount AS DECIMAL)) as total_amount
+	      FROM Transactions
+	      WHERE date >= $1
+	      GROUP BY date
+	      ORDER BY date ASC
+	    
+2025-05-13 14:00:54.215 UTC [2968] DETAIL:  parameters: $1 = '2025-05-07'
+2025-05-13 14:00:54.217 UTC [2969] LOG:  statement: 
+	      SELECT COUNT(DISTINCT name) AS total_users
+	      FROM Transactions
+	    
+2025-05-13 14:00:54.217 UTC [2970] LOG:  statement: SELECT * FROM Transactions ORDER BY id DESC LIMIT 1
+2025-05-13 14:02:05.924 UTC [2980] LOG:  execute <unnamed>: INSERT INTO Transactions (date, time, type, amount, name, ref, fee, remarks, created_at, updated_at)
+	       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
+	       RETURNING id
+2025-05-13 14:02:05.924 UTC [2980] DETAIL:  parameters: $1 = '2025-05-13', $2 = '18:05', $3 = 'Cash In', $4 = '300', $5 = 'MA S D.', $6 = '55410', $7 = '10', $8 = 'CUANA'
+2025-05-13 14:02:05.926 UTC [2980] LOG:  execute <unnamed>: UPDATE CurrentBalance SET balance = balance + $1 WHERE id = 1
+2025-05-13 14:02:05.926 UTC [2980] DETAIL:  parameters: $1 = '-300'
+2025-05-13 14:02:06.148 UTC [2980] LOG:  execute <unnamed>: SELECT * FROM Transactions WHERE date = $1 ORDER BY id DESC
+2025-05-13 14:02:06.148 UTC [2980] DETAIL:  parameters: $1 = '2025-05-13'
+2025-05-13 14:02:06.150 UTC [2980] LOG:  statement: SELECT balance FROM CurrentBalance WHERE id = 1
+2025-05-13 14:02:06.152 UTC [2980] LOG:  statement: 
+	      SELECT type, COUNT(*) as count
+	      FROM Transactions
+	      GROUP BY type
+	    
+2025-05-13 14:02:06.155 UTC [2980] LOG:  statement: SELECT * FROM Transactions ORDER BY id DESC LIMIT 1
+2025-05-13 14:02:06.159 UTC [2983] LOG:  statement: 
+	      SELECT COUNT(DISTINCT name) AS total_users
+	      FROM Transactions
+	    
+2025-05-13 14:02:06.160 UTC [2981] LOG:  execute <unnamed>: 
+	      SELECT date, SUM(CAST(amount AS DECIMAL)) as total_amount
+	      FROM Transactions
+	      WHERE date >= $1
+	      GROUP BY date
+	      ORDER BY date ASC
+	    
+2025-05-13 14:02:06.160 UTC [2981] DETAIL:  parameters: $1 = '2025-05-07'
+2025-05-13 14:02:06.160 UTC [2982] LOG:  execute <unnamed>: 
+	      SELECT 
+	        name,
+	        SUM(CASE WHEN type = 'Cash In' THEN 1 ELSE 0 END) AS cash_in_count,
+	        SUM(CASE WHEN type = 'Cash Out' THEN 1 ELSE 0 END) AS cash_out_count,
+	        SUM(CASE WHEN type = 'Load' THEN 1 ELSE 0 END) AS load_count,
+	        MAX(date) AS last_transaction
+	      FROM Transactions
+	    
+	      GROUP BY name
+	      ORDER BY name ASC
+	      LIMIT $1 OFFSET $2
+	    
+2025-05-13 14:02:06.160 UTC [2982] DETAIL:  parameters: $1 = '10', $2 = '0'
+2025-05-13 14:01:21.949 UTC [2992] LOG:  execute <unnamed>: INSERT INTO Transactions (date, time, type, amount, name, ref, fee, remarks, created_at, updated_at)
+	       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
+	       RETURNING id
+2025-05-13 14:01:21.949 UTC [2992] DETAIL:  parameters: $1 = '2025-05-13', $2 = '18:17', $3 = 'Cash In', $4 = '100', $5 = 'RH K B.', $6 = '83970', $7 = '10', $8 = 'CUANA'
+2025-05-13 14:01:21.952 UTC [2992] LOG:  execute <unnamed>: UPDATE CurrentBalance SET balance = balance + $1 WHERE id = 1
+2025-05-13 14:01:21.952 UTC [2992] DETAIL:  parameters: $1 = '-100'
+2025-05-13 14:01:22.174 UTC [2992] LOG:  execute <unnamed>: SELECT * FROM Transactions WHERE date = $1 ORDER BY id DESC
+2025-05-13 14:01:22.174 UTC [2992] DETAIL:  parameters: $1 = '2025-05-13'
+2025-05-13 14:01:22.176 UTC [2992] LOG:  statement: SELECT balance FROM CurrentBalance WHERE id = 1
+2025-05-13 14:01:22.178 UTC [2992] LOG:  statement: 
+	      SELECT type, COUNT(*) as count
+	      FROM Transactions
+	      GROUP BY type
+	    
+2025-05-13 14:01:22.180 UTC [2992] LOG:  statement: SELECT * FROM Transactions ORDER BY id DESC LIMIT 1
+2025-05-13 14:01:22.185 UTC [2993] LOG:  execute <unnamed>: 
+	      SELECT date, SUM(CAST(amount AS DECIMAL)) as total_amount
+	      FROM Transactions
+	      WHERE date >= $1
+	      GROUP BY date
+	      ORDER BY date ASC
+	    
+2025-05-13 14:01:22.185 UTC [2993] DETAIL:  parameters: $1 = '2025-05-07'
+2025-05-13 14:01:22.185 UTC [2994] LOG:  execute <unnamed>: 
+	      SELECT 
+	        name,
+	        SUM(CASE WHEN type = 'Cash In' THEN 1 ELSE 0 END) AS cash_in_count,
+	        SUM(CASE WHEN type = 'Cash Out' THEN 1 ELSE 0 END) AS cash_out_count,
+	        SUM(CASE WHEN type = 'Load' THEN 1 ELSE 0 END) AS load_count,
+	        MAX(date) AS last_transaction
+	      FROM Transactions
+	    
+	      GROUP BY name
+	      ORDER BY name ASC
+	      LIMIT $1 OFFSET $2
+	    
+2025-05-13 14:01:22.185 UTC [2994] DETAIL:  parameters: $1 = '10', $2 = '0'
+2025-05-13 14:01:22.185 UTC [2995] LOG:  statement: 
+	      SELECT COUNT(DISTINCT name) AS total_users
+	      FROM Transactions
+	    
+2025-05-13 14:01:37.399 UTC [3012] LOG:  execute <unnamed>: INSERT INTO Transactions (date, time, type, amount, name, ref, fee, remarks, created_at, updated_at)
+	       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
+	       RETURNING id
+2025-05-13 14:01:37.399 UTC [3012] DETAIL:  parameters: $1 = '2025-05-13', $2 = '18:36', $3 = 'Cash Out', $4 = '3000', $5 = 'RA L R.', $6 = '66656', $7 = '60', $8 = 'CLAIMED'
+2025-05-13 14:01:37.401 UTC [3012] LOG:  execute <unnamed>: UPDATE CurrentBalance SET balance = balance + $1 WHERE id = 1
+2025-05-13 14:01:37.401 UTC [3012] DETAIL:  parameters: $1 = '3000'
+2025-05-13 14:01:37.608 UTC [3012] LOG:  execute <unnamed>: SELECT * FROM Transactions WHERE date = $1 ORDER BY id DESC
+2025-05-13 14:01:37.608 UTC [3012] DETAIL:  parameters: $1 = '2025-05-13'
+2025-05-13 14:01:37.609 UTC [3012] LOG:  statement: SELECT balance FROM CurrentBalance WHERE id = 1
+2025-05-13 14:01:37.611 UTC [3012] LOG:  statement: 
+	      SELECT type, COUNT(*) as count
+	      FROM Transactions
+	      GROUP BY type
+	    
+2025-05-13 14:01:37.614 UTC [3012] LOG:  statement: SELECT * FROM Transactions ORDER BY id DESC LIMIT 1
+2025-05-13 14:01:37.618 UTC [3015] LOG:  statement: 
+	      SELECT COUNT(DISTINCT name) AS total_users
+	      FROM Transactions
+	    
+2025-05-13 14:01:37.618 UTC [3013] LOG:  execute <unnamed>: 
+	      SELECT date, SUM(CAST(amount AS DECIMAL)) as total_amount
+	      FROM Transactions
+	      WHERE date >= $1
+	      GROUP BY date
+	      ORDER BY date ASC
+	    
+2025-05-13 14:01:37.618 UTC [3013] DETAIL:  parameters: $1 = '2025-05-07'
+2025-05-13 14:01:37.619 UTC [3014] LOG:  execute <unnamed>: 
+	      SELECT 
+	        name,
+	        SUM(CASE WHEN type = 'Cash In' THEN 1 ELSE 0 END) AS cash_in_count,
+	        SUM(CASE WHEN type = 'Cash Out' THEN 1 ELSE 0 END) AS cash_out_count,
+	        SUM(CASE WHEN type = 'Load' THEN 1 ELSE 0 END) AS load_count,
+	        MAX(date) AS last_transaction
+	      FROM Transactions
+	    
+	      GROUP BY name
+	      ORDER BY name ASC
+	      LIMIT $1 OFFSET $2
+	    
+2025-05-13 14:01:37.619 UTC [3014] DETAIL:  parameters: $1 = '10', $2 = '0'
+2025-05-13 14:01:53.990 UTC [3033] LOG:  execute <unnamed>: INSERT INTO Transactions (date, time, type, amount, name, ref, fee, remarks, created_at, updated_at)
+	       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
+	       RETURNING id
+2025-05-13 14:01:53.990 UTC [3033] DETAIL:  parameters: $1 = '2025-05-13', $2 = '18:45', $3 = 'Cash Out', $4 = '1000', $5 = 'MA K JE E F.', $6 = '73946', $7 = '20', $8 = 'CLAIMED'
+2025-05-13 14:01:53.992 UTC [3033] LOG:  execute <unnamed>: UPDATE CurrentBalance SET balance = balance + $1 WHERE id = 1
+2025-05-13 14:01:53.992 UTC [3033] DETAIL:  parameters: $1 = '1000'
+2025-05-13 14:01:54.194 UTC [3033] LOG:  execute <unnamed>: SELECT * FROM Transactions WHERE date = $1 ORDER BY id DESC
+2025-05-13 14:01:54.194 UTC [3033] DETAIL:  parameters: $1 = '2025-05-13'
+2025-05-13 14:01:54.196 UTC [3033] LOG:  statement: SELECT balance FROM CurrentBalance WHERE id = 1
+2025-05-13 14:01:54.197 UTC [3033] LOG:  statement: 
+	      SELECT type, COUNT(*) as count
+	      FROM Transactions
+	      GROUP BY type
+	    
+2025-05-13 14:01:54.200 UTC [3033] LOG:  statement: SELECT * FROM Transactions ORDER BY id DESC LIMIT 1
+2025-05-13 14:01:54.203 UTC [3034] LOG:  execute <unnamed>: 
+	      SELECT date, SUM(CAST(amount AS DECIMAL)) as total_amount
+	      FROM Transactions
+	      WHERE date >= $1
+	      GROUP BY date
+	      ORDER BY date ASC
+	    
+2025-05-13 14:01:54.203 UTC [3034] DETAIL:  parameters: $1 = '2025-05-07'
+2025-05-13 14:01:54.204 UTC [3036] LOG:  statement: 
+	      SELECT COUNT(DISTINCT name) AS total_users
+	      FROM Transactions
+	    
+2025-05-13 14:01:54.205 UTC [3035] LOG:  execute <unnamed>: 
+	      SELECT 
+	        name,
+	        SUM(CASE WHEN type = 'Cash In' THEN 1 ELSE 0 END) AS cash_in_count,
+	        SUM(CASE WHEN type = 'Cash Out' THEN 1 ELSE 0 END) AS cash_out_count,
+	        SUM(CASE WHEN type = 'Load' THEN 1 ELSE 0 END) AS load_count,
+	        MAX(date) AS last_transaction
+	      FROM Transactions
+	    
+	      GROUP BY name
+	      ORDER BY name ASC
+	      LIMIT $1 OFFSET $2
+	    
+2025-05-13 14:01:54.205 UTC [3035] DETAIL:  parameters: $1 = '10', $2 = '0'
+2025-05-13 14:02:07.927 UTC [3045] LOG:  execute <unnamed>: INSERT INTO Transactions (date, time, type, amount, name, ref, fee, remarks, created_at, updated_at)
+	       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
+	       RETURNING id
+2025-05-13 14:02:07.927 UTC [3045] DETAIL:  parameters: $1 = '2025-05-13', $2 = '18:58', $3 = 'Cash In', $4 = '500', $5 = 'RANDY F.', $6 = '71603', $7 = '10', $8 = 'SENT'
+2025-05-13 14:02:07.930 UTC [3045] LOG:  execute <unnamed>: UPDATE CurrentBalance SET balance = balance + $1 WHERE id = 1
+2025-05-13 14:02:07.930 UTC [3045] DETAIL:  parameters: $1 = '-500'
+2025-05-13 14:02:08.102 UTC [3045] LOG:  execute <unnamed>: SELECT * FROM Transactions WHERE date = $1 ORDER BY id DESC
+2025-05-13 14:02:08.102 UTC [3045] DETAIL:  parameters: $1 = '2025-05-13'
+2025-05-13 14:02:08.105 UTC [3045] LOG:  statement: SELECT balance FROM CurrentBalance WHERE id = 1
+2025-05-13 14:02:08.106 UTC [3045] LOG:  statement: 
+	      SELECT type, COUNT(*) as count
+	      FROM Transactions
+	      GROUP BY type
+	    
+2025-05-13 14:02:08.109 UTC [3045] LOG:  statement: SELECT * FROM Transactions ORDER BY id DESC LIMIT 1
+2025-05-13 14:02:08.117 UTC [3048] LOG:  statement: 
+	      SELECT COUNT(DISTINCT name) AS total_users
+	      FROM Transactions
+	    
+2025-05-13 14:02:08.118 UTC [3046] LOG:  execute <unnamed>: 
+	      SELECT date, SUM(CAST(amount AS DECIMAL)) as total_amount
+	      FROM Transactions
+	      WHERE date >= $1
+	      GROUP BY date
+	      ORDER BY date ASC
+	    
+2025-05-13 14:02:08.118 UTC [3046] DETAIL:  parameters: $1 = '2025-05-07'
+2025-05-13 14:02:08.118 UTC [3047] LOG:  execute <unnamed>: 
+	      SELECT 
+	        name,
+	        SUM(CASE WHEN type = 'Cash In' THEN 1 ELSE 0 END) AS cash_in_count,
+	        SUM(CASE WHEN type = 'Cash Out' THEN 1 ELSE 0 END) AS cash_out_count,
+	        SUM(CASE WHEN type = 'Load' THEN 1 ELSE 0 END) AS load_count,
+	        MAX(date) AS last_transaction
+	      FROM Transactions
+	    
+	      GROUP BY name
+	      ORDER BY name ASC
+	      LIMIT $1 OFFSET $2
+	    
+2025-05-13 14:02:08.118 UTC [3047] DETAIL:  parameters: $1 = '10', $2 = '0'
+2025-05-13 14:02:26.734 UTC [3065] LOG:  execute <unnamed>: INSERT INTO Transactions (date, time, type, amount, name, ref, fee, remarks, created_at, updated_at)
+	       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
+	       RETURNING id
+2025-05-13 14:02:26.734 UTC [3065] DETAIL:  parameters: $1 = '2025-05-13', $2 = '20:18', $3 = 'Cash Out', $4 = '510', $5 = 'RENATO F.', $6 = '92830', $7 = '10', $8 = 'CLAIMED'
+2025-05-13 14:02:26.737 UTC [3065] LOG:  execute <unnamed>: UPDATE CurrentBalance SET balance = balance + $1 WHERE id = 1
+2025-05-13 14:02:26.737 UTC [3065] DETAIL:  parameters: $1 = '510'
+2025-05-13 14:02:26.943 UTC [3065] LOG:  execute <unnamed>: SELECT * FROM Transactions WHERE date = $1 ORDER BY id DESC
+2025-05-13 14:02:26.943 UTC [3065] DETAIL:  parameters: $1 = '2025-05-13'
+2025-05-13 14:02:26.945 UTC [3065] LOG:  statement: SELECT balance FROM CurrentBalance WHERE id = 1
+2025-05-13 14:02:26.947 UTC [3065] LOG:  statement: 
+	      SELECT type, COUNT(*) as count
+	      FROM Transactions
+	      GROUP BY type
+	    
+2025-05-13 14:02:26.952 UTC [3065] LOG:  statement: SELECT * FROM Transactions ORDER BY id DESC LIMIT 1
+2025-05-13 14:02:26.954 UTC [3066] LOG:  execute <unnamed>: 
+	      SELECT date, SUM(CAST(amount AS DECIMAL)) as total_amount
+	      FROM Transactions
+	      WHERE date >= $1
+	      GROUP BY date
+	      ORDER BY date ASC
+	    
+2025-05-13 14:02:26.954 UTC [3066] DETAIL:  parameters: $1 = '2025-05-07'
+2025-05-13 14:02:26.955 UTC [3068] LOG:  statement: 
+	      SELECT COUNT(DISTINCT name) AS total_users
+	      FROM Transactions
+	    
+2025-05-13 14:02:26.956 UTC [3067] LOG:  execute <unnamed>: 
+	      SELECT 
+	        name,
+	        SUM(CASE WHEN type = 'Cash In' THEN 1 ELSE 0 END) AS cash_in_count,
+	        SUM(CASE WHEN type = 'Cash Out' THEN 1 ELSE 0 END) AS cash_out_count,
+	        SUM(CASE WHEN type = 'Load' THEN 1 ELSE 0 END) AS load_count,
+	        MAX(date) AS last_transaction
+	      FROM Transactions
+	    
+	      GROUP BY name
+	      ORDER BY name ASC
+	      LIMIT $1 OFFSET $2
+	    
+2025-05-13 14:02:26.956 UTC [3067] DETAIL:  parameters: $1 = '10', $2 = '0'
+2025-05-13 14:02:41.427 UTC [3077] LOG:  execute <unnamed>: INSERT INTO Transactions (date, time, type, amount, name, ref, fee, remarks, created_at, updated_at)
+	       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
+	       RETURNING id
+2025-05-13 14:02:41.427 UTC [3077] DETAIL:  parameters: $1 = '2025-05-13', $2 = '20:23', $3 = 'Cash In', $4 = '90', $5 = 'ROMMEL F.', $6 = '66213', $7 = '5', $8 = 'SENT'
+2025-05-13 14:02:41.429 UTC [3077] LOG:  execute <unnamed>: UPDATE CurrentBalance SET balance = balance + $1 WHERE id = 1
+2025-05-13 14:02:41.429 UTC [3077] DETAIL:  parameters: $1 = '-90'
+2025-05-13 14:02:41.668 UTC [3077] LOG:  execute <unnamed>: SELECT * FROM Transactions WHERE date = $1 ORDER BY id DESC
+2025-05-13 14:02:41.668 UTC [3077] DETAIL:  parameters: $1 = '2025-05-13'
+2025-05-13 14:02:41.670 UTC [3077] LOG:  statement: SELECT balance FROM CurrentBalance WHERE id = 1
+2025-05-13 14:02:41.671 UTC [3077] LOG:  statement: 
+	      SELECT type, COUNT(*) as count
+	      FROM Transactions
+	      GROUP BY type
+	    
+2025-05-13 14:02:41.676 UTC [3077] LOG:  statement: SELECT * FROM Transactions ORDER BY id DESC LIMIT 1
+2025-05-13 14:02:41.679 UTC [3080] LOG:  statement: 
+	      SELECT COUNT(DISTINCT name) AS total_users
+	      FROM Transactions
+	    
+2025-05-13 14:02:41.680 UTC [3078] LOG:  execute <unnamed>: 
+	      SELECT date, SUM(CAST(amount AS DECIMAL)) as total_amount
+	      FROM Transactions
+	      WHERE date >= $1
+	      GROUP BY date
+	      ORDER BY date ASC
+	    
+2025-05-13 14:02:41.680 UTC [3078] DETAIL:  parameters: $1 = '2025-05-07'
+2025-05-13 14:02:41.680 UTC [3079] LOG:  execute <unnamed>: 
+	      SELECT 
+	        name,
+	        SUM(CASE WHEN type = 'Cash In' THEN 1 ELSE 0 END) AS cash_in_count,
+	        SUM(CASE WHEN type = 'Cash Out' THEN 1 ELSE 0 END) AS cash_out_count,
+	        SUM(CASE WHEN type = 'Load' THEN 1 ELSE 0 END) AS load_count,
+	        MAX(date) AS last_transaction
+	      FROM Transactions
+	    
+	      GROUP BY name
+	      ORDER BY name ASC
+	      LIMIT $1 OFFSET $2
+	    
+2025-05-13 14:02:41.680 UTC [3079] DETAIL:  parameters: $1 = '10', $2 = '0'
+2025-05-13 14:02:54.614 UTC [3098] LOG:  execute <unnamed>: INSERT INTO Transactions (date, time, type, amount, name, ref, fee, remarks, created_at, updated_at)
+	       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
+	       RETURNING id
+2025-05-13 14:02:54.614 UTC [3098] DETAIL:  parameters: $1 = '2025-05-13', $2 = '20:39', $3 = 'Cash In', $4 = '95', $5 = 'ROMMEL F.', $6 = '89267', $7 = '5', $8 = 'SENT'
+2025-05-13 14:02:54.616 UTC [3098] LOG:  execute <unnamed>: UPDATE CurrentBalance SET balance = balance + $1 WHERE id = 1
+2025-05-13 14:02:54.616 UTC [3098] DETAIL:  parameters: $1 = '-95'
+2025-05-13 14:02:54.870 UTC [3098] LOG:  execute <unnamed>: SELECT * FROM Transactions WHERE date = $1 ORDER BY id DESC
+2025-05-13 14:02:54.870 UTC [3098] DETAIL:  parameters: $1 = '2025-05-13'
+2025-05-13 14:02:54.871 UTC [3098] LOG:  statement: SELECT balance FROM CurrentBalance WHERE id = 1
+2025-05-13 14:02:54.873 UTC [3098] LOG:  execute <unnamed>: 
+	      SELECT date, SUM(CAST(amount AS DECIMAL)) as total_amount
+	      FROM Transactions
+	      WHERE date >= $1
+	      GROUP BY date
+	      ORDER BY date ASC
+	    
+2025-05-13 14:02:54.873 UTC [3098] DETAIL:  parameters: $1 = '2025-05-07'
+2025-05-13 14:02:54.875 UTC [3098] LOG:  execute <unnamed>: 
+	      SELECT 
+	        name,
+	        SUM(CASE WHEN type = 'Cash In' THEN 1 ELSE 0 END) AS cash_in_count,
+	        SUM(CASE WHEN type = 'Cash Out' THEN 1 ELSE 0 END) AS cash_out_count,
+	        SUM(CASE WHEN type = 'Load' THEN 1 ELSE 0 END) AS load_count,
+	        MAX(date) AS last_transaction
+	      FROM Transactions
+	    
+	      GROUP BY name
+	      ORDER BY name ASC
+	      LIMIT $1 OFFSET $2
+	    
+2025-05-13 14:02:54.875 UTC [3098] DETAIL:  parameters: $1 = '10', $2 = '0'
+2025-05-13 14:02:54.876 UTC [3098] LOG:  statement: SELECT * FROM Transactions ORDER BY id DESC LIMIT 1
+2025-05-13 14:02:54.879 UTC [3099] LOG:  statement: 
+	      SELECT type, COUNT(*) as count
+	      FROM Transactions
+	      GROUP BY type
+	    
+2025-05-13 14:02:54.881 UTC [3100] LOG:  statement: 
+	      SELECT COUNT(DISTINCT name) AS total_users
+	      FROM Transactions
+	    
+2025-05-13 14:03:08.094 UTC [3109] LOG:  execute <unnamed>: INSERT INTO Transactions (date, time, type, amount, name, ref, fee, remarks, created_at, updated_at)
+	       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
+	       RETURNING id
+2025-05-13 14:03:08.094 UTC [3109] DETAIL:  parameters: $1 = '2025-05-13', $2 = '20:58', $3 = 'Cash In', $4 = '200', $5 = 'MA C AU N A.', $6 = '98818', $7 = '10', $8 = 'SENT'
+2025-05-13 14:03:08.097 UTC [3109] LOG:  execute <unnamed>: UPDATE CurrentBalance SET balance = balance + $1 WHERE id = 1
+2025-05-13 14:03:08.097 UTC [3109] DETAIL:  parameters: $1 = '-200'
+2025-05-13 14:03:08.318 UTC [3109] LOG:  execute <unnamed>: SELECT * FROM Transactions WHERE date = $1 ORDER BY id DESC
+2025-05-13 14:03:08.318 UTC [3109] DETAIL:  parameters: $1 = '2025-05-13'
+2025-05-13 14:03:08.319 UTC [3109] LOG:  statement: SELECT balance FROM CurrentBalance WHERE id = 1
+2025-05-13 14:03:08.321 UTC [3109] LOG:  execute <unnamed>: 
+	      SELECT date, SUM(CAST(amount AS DECIMAL)) as total_amount
+	      FROM Transactions
+	      WHERE date >= $1
+	      GROUP BY date
+	      ORDER BY date ASC
+	    
+2025-05-13 14:03:08.321 UTC [3109] DETAIL:  parameters: $1 = '2025-05-07'
+2025-05-13 14:03:08.325 UTC [3109] LOG:  statement: SELECT * FROM Transactions ORDER BY id DESC LIMIT 1
+2025-05-13 14:03:08.329 UTC [3110] LOG:  statement: 
+	      SELECT type, COUNT(*) as count
+	      FROM Transactions
+	      GROUP BY type
+	    
+2025-05-13 14:03:08.330 UTC [3112] LOG:  statement: 
+	      SELECT COUNT(DISTINCT name) AS total_users
+	      FROM Transactions
+	    
+2025-05-13 14:03:08.330 UTC [3111] LOG:  execute <unnamed>: 
+	      SELECT 
+	        name,
+	        SUM(CASE WHEN type = 'Cash In' THEN 1 ELSE 0 END) AS cash_in_count,
+	        SUM(CASE WHEN type = 'Cash Out' THEN 1 ELSE 0 END) AS cash_out_count,
+	        SUM(CASE WHEN type = 'Load' THEN 1 ELSE 0 END) AS load_count,
+	        MAX(date) AS last_transaction
+	      FROM Transactions
+	    
+	      GROUP BY name
+	      ORDER BY name ASC
+	      LIMIT $1 OFFSET $2
+	    
+2025-05-13 14:03:08.330 UTC [3111] DETAIL:  parameters: $1 = '10', $2 = '0'
+2025-05-13 14:04:26.082 UTC [3130] LOG:  execute <unnamed>: INSERT INTO Transactions (date, time, type, amount, name, ref, fee, remarks, created_at, updated_at)
+	       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
+	       RETURNING id
+2025-05-13 14:04:26.082 UTC [3130] DETAIL:  parameters: $1 = '2025-05-13', $2 = '20:59', $3 = 'Cash Out', $4 = '1000', $5 = 'LYNDIN F.', $6 = '15609', $7 = '20', $8 = 'CLAIMED'
+2025-05-13 14:04:26.083 UTC [3130] LOG:  execute <unnamed>: UPDATE CurrentBalance SET balance = balance + $1 WHERE id = 1
+2025-05-13 14:04:26.083 UTC [3130] DETAIL:  parameters: $1 = '1000'
+2025-05-13 14:04:26.306 UTC [3130] LOG:  execute <unnamed>: SELECT * FROM Transactions WHERE date = $1 ORDER BY id DESC
+2025-05-13 14:04:26.306 UTC [3130] DETAIL:  parameters: $1 = '2025-05-13'
+2025-05-13 14:04:26.308 UTC [3130] LOG:  statement: SELECT balance FROM CurrentBalance WHERE id = 1
+2025-05-13 14:04:26.309 UTC [3130] LOG:  statement: 
+	      SELECT type, COUNT(*) as count
+	      FROM Transactions
+	      GROUP BY type
+	    
+2025-05-13 14:04:26.312 UTC [3130] LOG:  statement: SELECT * FROM Transactions ORDER BY id DESC LIMIT 1
+2025-05-13 14:04:26.316 UTC [3131] LOG:  execute <unnamed>: 
+	      SELECT date, SUM(CAST(amount AS DECIMAL)) as total_amount
+	      FROM Transactions
+	      WHERE date >= $1
+	      GROUP BY date
+	      ORDER BY date ASC
+	    
+2025-05-13 14:04:26.316 UTC [3131] DETAIL:  parameters: $1 = '2025-05-07'
+2025-05-13 14:04:26.316 UTC [3133] LOG:  statement: 
+	      SELECT COUNT(DISTINCT name) AS total_users
+	      FROM Transactions
+	    
+2025-05-13 14:04:26.317 UTC [3132] LOG:  execute <unnamed>: 
+	      SELECT 
+	        name,
+	        SUM(CASE WHEN type = 'Cash In' THEN 1 ELSE 0 END) AS cash_in_count,
+	        SUM(CASE WHEN type = 'Cash Out' THEN 1 ELSE 0 END) AS cash_out_count,
+	        SUM(CASE WHEN type = 'Load' THEN 1 ELSE 0 END) AS load_count,
+	        MAX(date) AS last_transaction
+	      FROM Transactions
+	    
+	      GROUP BY name
+	      ORDER BY name ASC
+	      LIMIT $1 OFFSET $2
+	    
+2025-05-13 14:04:26.317 UTC [3132] DETAIL:  parameters: $1 = '10', $2 = '0'
+2025-05-13 14:03:46.877 UTC [28] LOG:  checkpoint starting: time
+2025-05-13 14:03:47.500 UTC [28] LOG:  checkpoint complete: wrote 7 buffers (0.0%); 0 WAL file(s) added, 0 removed, 0 recycled; write=0.607 s, sync=0.006 s, total=0.623 s; sync files=6, longest=0.005 s, average=0.001 s; distance=26 kB, estimate=26 kB; lsn=0/1A75698, redo lsn=0/1A75660
+2025-05-13 14:03:49.960 UTC [3150] LOG:  execute <unnamed>: INSERT INTO Transactions (date, time, type, amount, name, ref, fee, remarks, created_at, updated_at)
+	       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
+	       RETURNING id
+2025-05-13 14:03:49.960 UTC [3150] DETAIL:  parameters: $1 = '2025-05-13', $2 = '21:01', $3 = 'Cash In', $4 = '45', $5 = 'ROMMEL F.', $6 = '71318', $7 = '5', $8 = 'SENT'
+2025-05-13 14:03:49.962 UTC [3150] LOG:  execute <unnamed>: UPDATE CurrentBalance SET balance = balance + $1 WHERE id = 1
+2025-05-13 14:03:49.962 UTC [3150] DETAIL:  parameters: $1 = '-45'
+2025-05-13 14:04:51.091 UTC [3150] LOG:  execute <unnamed>: SELECT * FROM Transactions WHERE date = $1 ORDER BY id DESC
+2025-05-13 14:04:51.091 UTC [3150] DETAIL:  parameters: $1 = '2025-05-13'
+2025-05-13 14:04:51.094 UTC [3150] LOG:  statement: SELECT balance FROM CurrentBalance WHERE id = 1
+2025-05-13 14:04:51.097 UTC [3150] LOG:  execute <unnamed>: 
+	      SELECT 
+	        name,
+	        SUM(CASE WHEN type = 'Cash In' THEN 1 ELSE 0 END) AS cash_in_count,
+	        SUM(CASE WHEN type = 'Cash Out' THEN 1 ELSE 0 END) AS cash_out_count,
+	        SUM(CASE WHEN type = 'Load' THEN 1 ELSE 0 END) AS load_count,
+	        MAX(date) AS last_transaction
+	      FROM Transactions
+	    
+	      GROUP BY name
+	      ORDER BY name ASC
+	      LIMIT $1 OFFSET $2
+	    
+2025-05-13 14:04:51.097 UTC [3150] DETAIL:  parameters: $1 = '10', $2 = '0'
+2025-05-13 14:04:51.099 UTC [3150] LOG:  statement: SELECT * FROM Transactions ORDER BY id DESC LIMIT 1
+2025-05-13 14:04:51.102 UTC [3152] LOG:  statement: 
+	      SELECT type, COUNT(*) as count
+	      FROM Transactions
+	      GROUP BY type
+	    
+2025-05-13 14:04:51.102 UTC [3153] LOG:  statement: 
+	      SELECT COUNT(DISTINCT name) AS total_users
+	      FROM Transactions
+	    
+2025-05-13 14:04:51.103 UTC [3151] LOG:  execute <unnamed>: 
+	      SELECT date, SUM(CAST(amount AS DECIMAL)) as total_amount
+	      FROM Transactions
+	      WHERE date >= $1
+	      GROUP BY date
+	      ORDER BY date ASC
+	    
+2025-05-13 14:04:51.103 UTC [3151] DETAIL:  parameters: $1 = '2025-05-07'
+2025-05-13 14:04:14.589 UTC [3179] LOG:  execute <unnamed>: INSERT INTO Transactions (date, time, type, amount, name, ref, fee, remarks, created_at, updated_at)
+	       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
+	       RETURNING id
+2025-05-13 14:04:14.589 UTC [3179] DETAIL:  parameters: $1 = '2025-05-13', $2 = '12:40', $3 = 'Cash Out', $4 = '500', $5 = 'JEREZ P.', $6 = 'E93DE', $7 = '10', $8 = 'MAYA - CLAIMED'
+2025-05-13 14:04:14.591 UTC [3179] LOG:  execute <unnamed>: UPDATE CurrentBalance SET balance = balance + $1 WHERE id = 1
+2025-05-13 14:04:14.591 UTC [3179] DETAIL:  parameters: $1 = '500'
+2025-05-13 14:04:15.023 UTC [3179] LOG:  execute <unnamed>: SELECT * FROM Transactions WHERE date = $1 ORDER BY id DESC
+2025-05-13 14:04:15.023 UTC [3179] DETAIL:  parameters: $1 = '2025-05-13'
+2025-05-13 14:04:15.026 UTC [3179] LOG:  statement: SELECT balance FROM CurrentBalance WHERE id = 1
+2025-05-13 14:04:15.030 UTC [3179] LOG:  statement: SELECT * FROM Transactions ORDER BY id DESC LIMIT 1
+2025-05-13 14:04:15.034 UTC [3183] LOG:  statement: 
+	      SELECT COUNT(DISTINCT name) AS total_users
+	      FROM Transactions
+	    
+2025-05-13 14:04:15.034 UTC [3181] LOG:  statement: 
+	      SELECT type, COUNT(*) as count
+	      FROM Transactions
+	      GROUP BY type
+	    
+2025-05-13 14:04:15.034 UTC [3180] LOG:  execute <unnamed>: 
+	      SELECT date, SUM(CAST(amount AS DECIMAL)) as total_amount
+	      FROM Transactions
+	      WHERE date >= $1
+	      GROUP BY date
+	      ORDER BY date ASC
+	    
+2025-05-13 14:04:15.034 UTC [3180] DETAIL:  parameters: $1 = '2025-05-07'
+2025-05-13 14:04:15.035 UTC [3182] LOG:  execute <unnamed>: 
+	      SELECT 
+	        name,
+	        SUM(CASE WHEN type = 'Cash In' THEN 1 ELSE 0 END) AS cash_in_count,
+	        SUM(CASE WHEN type = 'Cash Out' THEN 1 ELSE 0 END) AS cash_out_count,
+	        SUM(CASE WHEN type = 'Load' THEN 1 ELSE 0 END) AS load_count,
+	        MAX(date) AS last_transaction
+	      FROM Transactions
+	    
+	      GROUP BY name
+	      ORDER BY name ASC
+	      LIMIT $1 OFFSET $2
+	    
+2025-05-13 14:04:15.035 UTC [3182] DETAIL:  parameters: $1 = '10', $2 = '0'
+2025-05-13 14:04:28.974 UTC [3192] LOG:  execute <unnamed>: INSERT INTO Transactions (date, time, type, amount, name, ref, fee, remarks, created_at, updated_at)
+	       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
+	       RETURNING id
+2025-05-13 14:04:28.974 UTC [3192] DETAIL:  parameters: $1 = '2025-05-13', $2 = '15:03', $3 = 'Cash In', $4 = '50', $5 = 'MARISSA PAYMAYA', $6 = '491E3', $7 = '5', $8 = 'MAYA - SENT'
+2025-05-13 14:04:28.975 UTC [3192] LOG:  execute <unnamed>: UPDATE CurrentBalance SET balance = balance + $1 WHERE id = 1
+2025-05-13 14:04:28.975 UTC [3192] DETAIL:  parameters: $1 = '-50'
+2025-05-13 14:04:29.230 UTC [3192] LOG:  execute <unnamed>: SELECT * FROM Transactions WHERE date = $1 ORDER BY id DESC
+2025-05-13 14:04:29.230 UTC [3192] DETAIL:  parameters: $1 = '2025-05-13'
+2025-05-13 14:04:29.231 UTC [3192] LOG:  statement: SELECT balance FROM CurrentBalance WHERE id = 1
+2025-05-13 14:04:29.232 UTC [3192] LOG:  statement: 
+	      SELECT type, COUNT(*) as count
+	      FROM Transactions
+	      GROUP BY type
+	    
+2025-05-13 14:04:29.236 UTC [3192] LOG:  statement: SELECT * FROM Transactions ORDER BY id DESC LIMIT 1
+2025-05-13 14:04:29.240 UTC [3195] LOG:  statement: 
+	      SELECT COUNT(DISTINCT name) AS total_users
+	      FROM Transactions
+	    
+2025-05-13 14:04:29.240 UTC [3193] LOG:  execute <unnamed>: 
+	      SELECT date, SUM(CAST(amount AS DECIMAL)) as total_amount
+	      FROM Transactions
+	      WHERE date >= $1
+	      GROUP BY date
+	      ORDER BY date ASC
+	    
+2025-05-13 14:04:29.240 UTC [3193] DETAIL:  parameters: $1 = '2025-05-07'
+2025-05-13 14:04:29.241 UTC [3194] LOG:  execute <unnamed>: 
+	      SELECT 
+	        name,
+	        SUM(CASE WHEN type = 'Cash In' THEN 1 ELSE 0 END) AS cash_in_count,
+	        SUM(CASE WHEN type = 'Cash Out' THEN 1 ELSE 0 END) AS cash_out_count,
+	        SUM(CASE WHEN type = 'Load' THEN 1 ELSE 0 END) AS load_count,
+	        MAX(date) AS last_transaction
+	      FROM Transactions
+	    
+	      GROUP BY name
+	      ORDER BY name ASC
+	      LIMIT $1 OFFSET $2
+	    
+2025-05-13 14:04:29.241 UTC [3194] DETAIL:  parameters: $1 = '10', $2 = '0'
+2025-05-13 14:04:41.306 UTC [3204] LOG:  execute <unnamed>: INSERT INTO Transactions (date, time, type, amount, name, ref, fee, remarks, created_at, updated_at)
+	       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
+	       RETURNING id
+2025-05-13 14:04:41.306 UTC [3204] DETAIL:  parameters: $1 = '2025-05-13', $2 = '19:56', $3 = 'Cash In', $4 = '30', $5 = 'KUYA JUN', $6 = '66B47', $7 = '5', $8 = 'MAYA - SENT'
+2025-05-13 14:04:41.308 UTC [3204] LOG:  execute <unnamed>: UPDATE CurrentBalance SET balance = balance + $1 WHERE id = 1
+2025-05-13 14:04:41.308 UTC [3204] DETAIL:  parameters: $1 = '-30'
+2025-05-13 14:04:41.513 UTC [3204] LOG:  execute <unnamed>: SELECT * FROM Transactions WHERE date = $1 ORDER BY id DESC
+2025-05-13 14:04:41.513 UTC [3204] DETAIL:  parameters: $1 = '2025-05-13'
+2025-05-13 14:04:41.516 UTC [3204] LOG:  statement: SELECT balance FROM CurrentBalance WHERE id = 1
+2025-05-13 14:04:41.517 UTC [3204] LOG:  statement: 
+	      SELECT type, COUNT(*) as count
+	      FROM Transactions
+	      GROUP BY type
+	    
+2025-05-13 14:04:41.521 UTC [3204] LOG:  statement: SELECT * FROM Transactions ORDER BY id DESC LIMIT 1
+2025-05-13 14:04:41.524 UTC [3207] LOG:  statement: 
+	      SELECT COUNT(DISTINCT name) AS total_users
+	      FROM Transactions
+	    
+2025-05-13 14:04:41.524 UTC [3205] LOG:  execute <unnamed>: 
+	      SELECT date, SUM(CAST(amount AS DECIMAL)) as total_amount
+	      FROM Transactions
+	      WHERE date >= $1
+	      GROUP BY date
+	      ORDER BY date ASC
+	    
+2025-05-13 14:04:41.524 UTC [3205] DETAIL:  parameters: $1 = '2025-05-07'
+2025-05-13 14:04:41.525 UTC [3206] LOG:  execute <unnamed>: 
+	      SELECT 
+	        name,
+	        SUM(CASE WHEN type = 'Cash In' THEN 1 ELSE 0 END) AS cash_in_count,
+	        SUM(CASE WHEN type = 'Cash Out' THEN 1 ELSE 0 END) AS cash_out_count,
+	        SUM(CASE WHEN type = 'Load' THEN 1 ELSE 0 END) AS load_count,
+	        MAX(date) AS last_transaction
+	      FROM Transactions
+	    
+	      GROUP BY name
+	      ORDER BY name ASC
+	      LIMIT $1 OFFSET $2
+	    
+2025-05-13 14:04:41.525 UTC [3206] DETAIL:  parameters: $1 = '10', $2 = '0'
+2025-05-13 14:05:06.203 UTC [3234] LOG:  execute <unnamed>: INSERT INTO Transactions (date, time, type, amount, name, ref, fee, remarks, created_at, updated_at)
+	       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
+	       RETURNING id
+2025-05-13 14:05:06.203 UTC [3234] DETAIL:  parameters: $1 = '2025-05-13', $2 = '21:59', $3 = 'Cash In', $4 = '100', $5 = '09941384576', $6 = '52C00', $7 = '10', $8 = 'MAYA - SENT'
+2025-05-13 14:05:06.206 UTC [3234] LOG:  execute <unnamed>: UPDATE CurrentBalance SET balance = balance + $1 WHERE id = 1
+2025-05-13 14:05:06.206 UTC [3234] DETAIL:  parameters: $1 = '-100'
+2025-05-13 14:05:06.395 UTC [3234] LOG:  execute <unnamed>: SELECT * FROM Transactions WHERE date = $1 ORDER BY id DESC
+2025-05-13 14:05:06.395 UTC [3234] DETAIL:  parameters: $1 = '2025-05-13'
+2025-05-13 14:05:06.397 UTC [3234] LOG:  statement: SELECT balance FROM CurrentBalance WHERE id = 1
+2025-05-13 14:05:06.399 UTC [3234] LOG:  statement: 
+	      SELECT type, COUNT(*) as count
+	      FROM Transactions
+	      GROUP BY type
+	    
+2025-05-13 14:05:06.403 UTC [3234] LOG:  statement: SELECT * FROM Transactions ORDER BY id DESC LIMIT 1
+2025-05-13 14:05:06.406 UTC [3237] LOG:  statement: 
+	      SELECT COUNT(DISTINCT name) AS total_users
+	      FROM Transactions
+	    
+2025-05-13 14:05:06.406 UTC [3235] LOG:  execute <unnamed>: 
+	      SELECT date, SUM(CAST(amount AS DECIMAL)) as total_amount
+	      FROM Transactions
+	      WHERE date >= $1
+	      GROUP BY date
+	      ORDER BY date ASC
+	    
+2025-05-13 14:05:06.406 UTC [3235] DETAIL:  parameters: $1 = '2025-05-07'
+2025-05-13 14:05:06.407 UTC [3236] LOG:  execute <unnamed>: 
+	      SELECT 
+	        name,
+	        SUM(CASE WHEN type = 'Cash In' THEN 1 ELSE 0 END) AS cash_in_count,
+	        SUM(CASE WHEN type = 'Cash Out' THEN 1 ELSE 0 END) AS cash_out_count,
+	        SUM(CASE WHEN type = 'Load' THEN 1 ELSE 0 END) AS load_count,
+	        MAX(date) AS last_transaction
+	      FROM Transactions
+	    
+	      GROUP BY name
+	      ORDER BY name ASC
+	      LIMIT $1 OFFSET $2
+	    
+2025-05-13 14:05:06.407 UTC [3236] DETAIL:  parameters: $1 = '10', $2 = '0'
+2025-05-13 14:05:09.584 UTC [3236] LOG:  execute <unnamed>: SELECT * FROM Transactions WHERE date = $1 ORDER BY id DESC
+2025-05-13 14:05:09.584 UTC [3236] DETAIL:  parameters: $1 = '2025-05-13'
+2025-05-13 14:05:09.590 UTC [3236] LOG:  statement: SELECT * FROM Transactions ORDER BY id DESC LIMIT 1
+2025-05-13 14:06:11.431 UTC [3236] LOG:  execute <unnamed>: SELECT * FROM Transactions WHERE date = $1 ORDER BY id ASC
+2025-05-13 14:06:11.431 UTC [3236] DETAIL:  parameters: $1 = '2025-05-13'
+2025-05-13 14:05:16.160 UTC [3246] LOG:  statement: SELECT pg_catalog.set_config('search_path', '', false);
+2025-05-13 14:05:16.161 UTC [3246] LOG:  statement: SELECT pg_catalog.pg_is_in_recovery()
+2025-05-13 14:05:16.162 UTC [3246] LOG:  statement: SELECT pg_catalog.set_config('search_path', '', false);
+2025-05-13 14:05:16.162 UTC [3246] LOG:  statement: SET DATESTYLE = ISO
+2025-05-13 14:05:16.162 UTC [3246] LOG:  statement: SET INTERVALSTYLE = POSTGRES
+2025-05-13 14:05:16.162 UTC [3246] LOG:  statement: SET extra_float_digits TO 3
+2025-05-13 14:05:16.163 UTC [3246] LOG:  statement: SET synchronize_seqscans TO off
+2025-05-13 14:05:16.163 UTC [3246] LOG:  statement: SET statement_timeout = 0
+2025-05-13 14:05:16.163 UTC [3246] LOG:  statement: SET lock_timeout = 0
+2025-05-13 14:05:16.163 UTC [3246] LOG:  statement: SET idle_in_transaction_session_timeout = 0
+2025-05-13 14:05:16.163 UTC [3246] LOG:  statement: SET row_security = off
+2025-05-13 14:05:16.163 UTC [3246] LOG:  statement: SELECT set_config(name, 'view, foreign-table', false) FROM pg_settings WHERE name = 'restrict_nonsystem_relation_kind'
+2025-05-13 14:05:16.166 UTC [3246] LOG:  statement: BEGIN
+2025-05-13 14:05:16.166 UTC [3246] LOG:  statement: SET TRANSACTION ISOLATION LEVEL REPEATABLE READ, READ ONLY
+2025-05-13 14:05:16.167 UTC [3246] LOG:  statement: SELECT oid, rolname FROM pg_catalog.pg_roles ORDER BY 1
+2025-05-13 14:05:16.169 UTC [3246] LOG:  statement: SELECT x.tableoid, x.oid, x.extname, n.nspname, x.extrelocatable, x.extversion, x.extconfig, x.extcondition FROM pg_extension x JOIN pg_namespace n ON n.oid = x.extnamespace
+2025-05-13 14:05:16.171 UTC [3246] LOG:  statement: SELECT classid, objid, refobjid FROM pg_depend WHERE refclassid = 'pg_extension'::regclass AND deptype = 'e' ORDER BY 3
+2025-05-13 14:05:16.173 UTC [3246] LOG:  statement: SELECT n.tableoid, n.oid, n.nspname, n.nspowner, n.nspacl, acldefault('n', n.nspowner) AS acldefault FROM pg_namespace n
+2025-05-13 14:05:16.174 UTC [3246] LOG:  statement: SELECT c.tableoid, c.oid, c.relname, c.relnamespace, c.relkind, c.reltype, c.relowner, c.relchecks, c.relhasindex, c.relhasrules, c.relpages, c.relhastriggers, c.relpersistence, c.reloftype, c.relacl, acldefault(CASE WHEN c.relkind = 'S' THEN 's'::"char" ELSE 'r'::"char" END, c.relowner) AS acldefault, CASE WHEN c.relkind = 'f' THEN (SELECT ftserver FROM pg_catalog.pg_foreign_table WHERE ftrelid = c.oid) ELSE 0 END AS foreignserver, c.relfrozenxid, tc.relfrozenxid AS tfrozenxid, tc.oid AS toid, tc.relpages AS toastpages, tc.reloptions AS toast_reloptions, d.refobjid AS owning_tab, d.refobjsubid AS owning_col, tsp.spcname AS reltablespace, false AS relhasoids, c.relispopulated, c.relreplident, c.relrowsecurity, c.relforcerowsecurity, c.relminmxid, tc.relminmxid AS tminmxid, array_remove(array_remove(c.reloptions,'check_option=local'),'check_option=cascaded') AS reloptions, CASE WHEN 'check_option=local' = ANY (c.reloptions) THEN 'LOCAL'::text WHEN 'check_option=cascaded' = ANY (c.reloptions) THEN 'CASCADED'::text ELSE NULL END AS checkoption, am.amname, (d.deptype = 'i') IS TRUE AS is_identity_sequence, c.relispartition AS ispartition 
+	FROM pg_class c
+	LEFT JOIN pg_depend d ON (c.relkind = 'S' AND d.classid = 'pg_class'::regclass AND d.objid = c.oid AND d.objsubid = 0 AND d.refclassid = 'pg_class'::regclass AND d.deptype IN ('a', 'i'))
+	LEFT JOIN pg_tablespace tsp ON (tsp.oid = c.reltablespace)
+	LEFT JOIN pg_am am ON (c.relam = am.oid)
+	LEFT JOIN pg_class tc ON (c.reltoastrelid = tc.oid AND tc.relkind = 't' AND c.relkind <> 'p')
+	WHERE c.relkind IN ('r', 'S', 'v', 'c', 'm', 'f', 'p')
+	ORDER BY c.oid
+2025-05-13 14:05:16.184 UTC [3246] LOG:  statement: LOCK TABLE public.transactions, public.currentbalance IN ACCESS SHARE MODE
+2025-05-13 14:05:16.184 UTC [3246] LOG:  statement: SELECT p.tableoid, p.oid, p.proname, p.prolang, p.pronargs, p.proargtypes, p.prorettype, p.proacl, acldefault('f', p.proowner) AS acldefault, p.pronamespace, p.proowner FROM pg_proc p LEFT JOIN pg_init_privs pip ON (p.oid = pip.objoid AND pip.classoid = 'pg_proc'::regclass AND pip.objsubid = 0) WHERE p.prokind <> 'a'
+	  AND NOT EXISTS (SELECT 1 FROM pg_depend WHERE classid = 'pg_proc'::regclass AND objid = p.oid AND deptype = 'i')
+	  AND (
+	  pronamespace != (SELECT oid FROM pg_namespace WHERE nspname = 'pg_catalog')
+	  OR EXISTS (SELECT 1 FROM pg_cast
+	  WHERE pg_cast.oid > 16383 
+	  AND p.oid = pg_cast.castfunc)
+	  OR EXISTS (SELECT 1 FROM pg_transform
+	  WHERE pg_transform.oid > 16383 AND 
+	  (p.oid = pg_transform.trffromsql
+	  OR p.oid = pg_transform.trftosql))
+	  OR p.proacl IS DISTINCT FROM pip.initprivs)
+2025-05-13 14:05:16.197 UTC [3246] LOG:  statement: SELECT tableoid, oid, typname, typnamespace, typacl, acldefault('T', typowner) AS acldefault, typowner, typelem, typrelid, CASE WHEN typrelid = 0 THEN ' '::"char" ELSE (SELECT relkind FROM pg_class WHERE oid = typrelid) END AS typrelkind, typtype, typisdefined, typname[0] = '_' AND typelem != 0 AND (SELECT typarray FROM pg_type te WHERE oid = pg_type.typelem) = oid AS isarray FROM pg_type
+2025-05-13 14:05:16.200 UTC [3246] LOG:  statement: SELECT tableoid, oid, lanname, lanpltrusted, lanplcallfoid, laninline, lanvalidator, lanacl, acldefault('l', lanowner) AS acldefault, lanowner FROM pg_language WHERE lanispl ORDER BY oid
+2025-05-13 14:05:16.201 UTC [3246] LOG:  statement: SELECT p.tableoid, p.oid, p.proname AS aggname, p.pronamespace AS aggnamespace, p.pronargs, p.proargtypes, p.proowner, p.proacl AS aggacl, acldefault('f', p.proowner) AS acldefault FROM pg_proc p LEFT JOIN pg_init_privs pip ON (p.oid = pip.objoid AND pip.classoid = 'pg_proc'::regclass AND pip.objsubid = 0) WHERE p.prokind = 'a' AND (p.pronamespace != (SELECT oid FROM pg_namespace WHERE nspname = 'pg_catalog') OR p.proacl IS DISTINCT FROM pip.initprivs)
+2025-05-13 14:05:16.202 UTC [3246] LOG:  statement: SELECT tableoid, oid, oprname, oprnamespace, oprowner, oprkind, oprcode::oid AS oprcode FROM pg_operator
+2025-05-13 14:05:16.203 UTC [3246] LOG:  statement: SELECT tableoid, oid, amname, amtype, amhandler::pg_catalog.regproc AS amhandler FROM pg_am
+2025-05-13 14:05:16.204 UTC [3246] LOG:  statement: SELECT tableoid, oid, opcname, opcnamespace, opcowner FROM pg_opclass
+2025-05-13 14:05:16.205 UTC [3246] LOG:  statement: SELECT tableoid, oid, opfname, opfnamespace, opfowner FROM pg_opfamily
+2025-05-13 14:05:16.206 UTC [3246] LOG:  statement: SELECT tableoid, oid, prsname, prsnamespace, prsstart::oid, prstoken::oid, prsend::oid, prsheadline::oid, prslextype::oid FROM pg_ts_parser
+2025-05-13 14:05:16.209 UTC [3246] LOG:  statement: SELECT tableoid, oid, tmplname, tmplnamespace, tmplinit::oid, tmpllexize::oid FROM pg_ts_template
+2025-05-13 14:05:16.210 UTC [3246] LOG:  statement: SELECT tableoid, oid, dictname, dictnamespace, dictowner, dicttemplate, dictinitoption FROM pg_ts_dict
+2025-05-13 14:05:16.211 UTC [3246] LOG:  statement: SELECT tableoid, oid, cfgname, cfgnamespace, cfgowner, cfgparser FROM pg_ts_config
+2025-05-13 14:05:16.212 UTC [3246] LOG:  statement: SELECT tableoid, oid, fdwname, fdwowner, fdwhandler::pg_catalog.regproc, fdwvalidator::pg_catalog.regproc, fdwacl, acldefault('F', fdwowner) AS acldefault, array_to_string(ARRAY(SELECT quote_ident(option_name) || ' ' || quote_literal(option_value) FROM pg_options_to_table(fdwoptions) ORDER BY option_name), E',
+	    ') AS fdwoptions FROM pg_foreign_data_wrapper
+2025-05-13 14:05:16.214 UTC [3246] LOG:  statement: SELECT tableoid, oid, srvname, srvowner, srvfdw, srvtype, srvversion, srvacl, acldefault('S', srvowner) AS acldefault, array_to_string(ARRAY(SELECT quote_ident(option_name) || ' ' || quote_literal(option_value) FROM pg_options_to_table(srvoptions) ORDER BY option_name), E',
+	    ') AS srvoptions FROM pg_foreign_server
+2025-05-13 14:05:16.215 UTC [3246] LOG:  statement: SELECT oid, tableoid, defaclrole, defaclnamespace, defaclobjtype, defaclacl, CASE WHEN defaclnamespace = 0 THEN acldefault(CASE WHEN defaclobjtype = 'S' THEN 's'::"char" ELSE defaclobjtype END, defaclrole) ELSE '{}' END AS acldefault FROM pg_default_acl
+2025-05-13 14:05:16.215 UTC [3246] LOG:  statement: SELECT tableoid, oid, collname, collnamespace, collowner FROM pg_collation
+2025-05-13 14:05:16.217 UTC [3246] LOG:  statement: SELECT tableoid, oid, conname, connamespace, conowner FROM pg_conversion
+2025-05-13 14:05:16.219 UTC [3246] LOG:  statement: SELECT tableoid, oid, castsource, casttarget, castfunc, castcontext, castmethod FROM pg_cast c WHERE NOT EXISTS ( SELECT 1 FROM pg_range r WHERE c.castsource = r.rngtypid AND c.casttarget = r.rngmultitypid ) ORDER BY 3,4
+2025-05-13 14:05:16.221 UTC [3246] LOG:  statement: SELECT tableoid, oid, trftype, trflang, trffromsql::oid, trftosql::oid FROM pg_transform ORDER BY 3,4
+2025-05-13 14:05:16.221 UTC [3246] LOG:  statement: SELECT inhrelid, inhparent FROM pg_inherits
+2025-05-13 14:05:16.222 UTC [3246] LOG:  statement: SELECT e.tableoid, e.oid, evtname, evtenabled, evtevent, evtowner, array_to_string(array(select quote_literal(x)  from unnest(evttags) as t(x)), ', ') as evttags, e.evtfoid::regproc as evtfname FROM pg_event_trigger e ORDER BY e.oid
+2025-05-13 14:05:16.223 UTC [3246] LOG:  statement: SELECT conrelid, confrelid FROM pg_constraint JOIN pg_depend ON (objid = confrelid) WHERE contype = 'f' AND refclassid = 'pg_extension'::regclass AND classid = 'pg_class'::regclass;
+2025-05-13 14:05:16.225 UTC [3246] LOG:  statement: SELECT
+	a.attrelid,
+	a.attnum,
+	a.attname,
+	a.attstattarget,
+	a.attstorage,
+	t.typstorage,
+	a.attnotnull,
+	a.atthasdef,
+	a.attisdropped,
+	a.attlen,
+	a.attalign,
+	a.attislocal,
+	pg_catalog.format_type(t.oid, a.atttypmod) AS atttypname,
+	array_to_string(a.attoptions, ', ') AS attoptions,
+	CASE WHEN a.attcollation <> t.typcollation THEN a.attcollation ELSE 0 END AS attcollation,
+	pg_catalog.array_to_string(ARRAY(SELECT pg_catalog.quote_ident(option_name) || ' ' || pg_catalog.quote_literal(option_value) FROM pg_catalog.pg_options_to_table(attfdwoptions) ORDER BY option_name), E',
+	    ') AS attfdwoptions,
+	a.attcompression AS attcompression,
+	a.attidentity,
+	CASE WHEN a.atthasmissing AND NOT a.attisdropped THEN a.attmissingval ELSE null END AS attmissingval,
+	a.attgenerated
+	FROM unnest('{16394,16405}'::pg_catalog.oid[]) AS src(tbloid)
+	JOIN pg_catalog.pg_attribute a ON (src.tbloid = a.attrelid) LEFT JOIN pg_catalog.pg_type t ON (a.atttypid = t.oid)
+	WHERE a.attnum > 0::pg_catalog.int2
+	ORDER BY a.attrelid, a.attnum
+2025-05-13 14:05:16.226 UTC [3246] LOG:  statement: SELECT a.tableoid, a.oid, adrelid, adnum, pg_catalog.pg_get_expr(adbin, adrelid) AS adsrc
+	FROM unnest('{16394,16405}'::pg_catalog.oid[]) AS src(tbloid)
+	JOIN pg_catalog.pg_attrdef a ON (src.tbloid = a.adrelid)
+	ORDER BY a.adrelid, a.adnum
+2025-05-13 14:05:16.228 UTC [3246] LOG:  statement: SELECT partrelid FROM pg_partitioned_table WHERE
+	(SELECT c.oid FROM pg_opclass c JOIN pg_am a ON c.opcmethod = a.oid
+	WHERE opcname = 'enum_ops' AND opcnamespace = 'pg_catalog'::regnamespace AND amname = 'hash') = ANY(partclass)
+2025-05-13 14:05:16.228 UTC [3246] LOG:  statement: SELECT t.tableoid, t.oid, i.indrelid, t.relname AS indexname, pg_catalog.pg_get_indexdef(i.indexrelid) AS indexdef, i.indkey, i.indisclustered, c.contype, c.conname, c.condeferrable, c.condeferred, c.tableoid AS contableoid, c.oid AS conoid, pg_catalog.pg_get_constraintdef(c.oid, false) AS condef, (SELECT spcname FROM pg_catalog.pg_tablespace s WHERE s.oid = t.reltablespace) AS tablespace, t.reloptions AS indreloptions, i.indisreplident, inh.inhparent AS parentidx, i.indnkeyatts AS indnkeyatts, i.indnatts AS indnatts, (SELECT pg_catalog.array_agg(attnum ORDER BY attnum)   FROM pg_catalog.pg_attribute   WHERE attrelid = i.indexrelid AND     attstattarget >= 0) AS indstatcols, (SELECT pg_catalog.array_agg(attstattarget ORDER BY attnum)   FROM pg_catalog.pg_attribute   WHERE attrelid = i.indexrelid AND     attstattarget >= 0) AS indstatvals, i.indnullsnotdistinct FROM unnest('{16394,16405}'::pg_catalog.oid[]) AS src(tbloid)
+	JOIN pg_catalog.pg_index i ON (src.tbloid = i.indrelid) JOIN pg_catalog.pg_class t ON (t.oid = i.indexrelid) JOIN pg_catalog.pg_class t2 ON (t2.oid = i.indrelid) LEFT JOIN pg_catalog.pg_constraint c ON (i.indrelid = c.conrelid AND i.indexrelid = c.conindid AND c.contype IN ('p','u','x')) LEFT JOIN pg_catalog.pg_inherits inh ON (inh.inhrelid = indexrelid) WHERE (i.indisvalid OR t2.relkind = 'p') AND i.indisready ORDER BY i.indrelid, indexname
+2025-05-13 14:05:16.231 UTC [3246] LOG:  statement: SELECT tableoid, oid, stxname, stxnamespace, stxowner, stxrelid, stxstattarget FROM pg_catalog.pg_statistic_ext
+2025-05-13 14:05:16.232 UTC [3246] LOG:  statement: SELECT c.tableoid, c.oid, conrelid, conname, confrelid, conindid, pg_catalog.pg_get_constraintdef(c.oid) AS condef
+	FROM unnest('{}'::pg_catalog.oid[]) AS src(tbloid)
+	JOIN pg_catalog.pg_constraint c ON (src.tbloid = c.conrelid)
+	WHERE contype = 'f' AND conparentid = 0 ORDER BY conrelid, conname
+2025-05-13 14:05:16.232 UTC [3246] LOG:  statement: SELECT t.tgrelid, t.tgname, t.tgfoid::pg_catalog.regproc AS tgfname, pg_catalog.pg_get_triggerdef(t.oid, false) AS tgdef, t.tgenabled, t.tableoid, t.oid, t.tgparentid <> 0 AS tgispartition
+	FROM unnest('{}'::pg_catalog.oid[]) AS src(tbloid)
+	JOIN pg_catalog.pg_trigger t ON (src.tbloid = t.tgrelid) LEFT JOIN pg_catalog.pg_trigger u ON (u.oid = t.tgparentid) WHERE ((NOT t.tgisinternal AND t.tgparentid = 0) OR t.tgenabled != u.tgenabled) ORDER BY t.tgrelid, t.tgname
+2025-05-13 14:05:16.233 UTC [3246] LOG:  statement: SELECT tableoid, oid, rulename, ev_class AS ruletable, ev_type, is_instead, ev_enabled FROM pg_rewrite ORDER BY oid
+2025-05-13 14:05:16.234 UTC [3246] LOG:  statement: SELECT pol.oid, pol.tableoid, pol.polrelid, pol.polname, pol.polcmd, pol.polpermissive, CASE WHEN pol.polroles = '{0}' THEN NULL ELSE    pg_catalog.array_to_string(ARRAY(SELECT pg_catalog.quote_ident(rolname) from pg_catalog.pg_roles WHERE oid = ANY(pol.polroles)), ', ') END AS polroles, pg_catalog.pg_get_expr(pol.polqual, pol.polrelid) AS polqual, pg_catalog.pg_get_expr(pol.polwithcheck, pol.polrelid) AS polwithcheck FROM unnest('{16394,16405}'::pg_catalog.oid[]) AS src(tbloid)
+	JOIN pg_catalog.pg_policy pol ON (src.tbloid = pol.polrelid)
+2025-05-13 14:05:16.235 UTC [3246] LOG:  statement: SELECT p.tableoid, p.oid, p.pubname, p.pubowner, p.puballtables, p.pubinsert, p.pubupdate, p.pubdelete, p.pubtruncate, p.pubviaroot FROM pg_publication p
+2025-05-13 14:05:16.236 UTC [3246] LOG:  statement: SELECT tableoid, oid, prpubid, prrelid, pg_catalog.pg_get_expr(prqual, prrelid) AS prrelqual, (CASE
+	  WHEN pr.prattrs IS NOT NULL THEN
+	    (SELECT array_agg(attname)
+	       FROM
+	         pg_catalog.generate_series(0, pg_catalog.array_upper(pr.prattrs::pg_catalog.int2[], 1)) s,
+	         pg_catalog.pg_attribute
+	      WHERE attrelid = pr.prrelid AND attnum = prattrs[s])
+	  ELSE NULL END) prattrs FROM pg_catalog.pg_publication_rel pr
+2025-05-13 14:05:16.237 UTC [3246] LOG:  statement: SELECT tableoid, oid, pnpubid, pnnspid FROM pg_catalog.pg_publication_namespace
+2025-05-13 14:05:16.237 UTC [3246] LOG:  statement: SELECT s.tableoid, s.oid, s.subname,
+	 s.subowner,
+	 s.subconninfo, s.subslotname, s.subsynccommit,
+	 s.subpublications,
+	 s.subbinary,
+	 s.substream,
+	 s.subtwophasestate,
+	 s.subdisableonerr,
+	 s.subpasswordrequired,
+	 s.subrunasowner,
+	 s.suborigin
+	FROM pg_subscription s
+	WHERE s.subdbid = (SELECT oid FROM pg_database
+	                   WHERE datname = current_database())
+2025-05-13 14:05:16.238 UTC [3246] LOG:  statement: WITH RECURSIVE w AS ( SELECT d1.objid, d2.refobjid, c2.relkind AS refrelkind FROM pg_depend d1 JOIN pg_class c1 ON c1.oid = d1.objid AND c1.relkind = 'm' JOIN pg_rewrite r1 ON r1.ev_class = d1.objid JOIN pg_depend d2 ON d2.classid = 'pg_rewrite'::regclass AND d2.objid = r1.oid AND d2.refobjid <> d1.objid JOIN pg_class c2 ON c2.oid = d2.refobjid AND c2.relkind IN ('m','v') WHERE d1.classid = 'pg_class'::regclass UNION SELECT w.objid, d3.refobjid, c3.relkind FROM w JOIN pg_rewrite r3 ON r3.ev_class = w.refobjid JOIN pg_depend d3 ON d3.classid = 'pg_rewrite'::regclass AND d3.objid = r3.oid AND d3.refobjid <> w.refobjid JOIN pg_class c3 ON c3.oid = d3.refobjid AND c3.relkind IN ('m','v') ) SELECT 'pg_class'::regclass::oid AS classid, objid, refobjid FROM w WHERE refrelkind = 'm'
+2025-05-13 14:05:16.240 UTC [3246] LOG:  statement: SELECT oid, lomowner, lomacl, acldefault('L', lomowner) AS acldefault FROM pg_largeobject_metadata
+2025-05-13 14:05:16.240 UTC [3246] LOG:  statement: SELECT classid, objid, refclassid, refobjid, deptype FROM pg_depend WHERE deptype != 'p' AND deptype != 'e'
+	UNION ALL
+	SELECT 'pg_opfamily'::regclass AS classid, amopfamily AS objid, refclassid, refobjid, deptype FROM pg_depend d, pg_amop o WHERE deptype NOT IN ('p', 'e', 'i') AND classid = 'pg_amop'::regclass AND objid = o.oid AND NOT (refclassid = 'pg_opfamily'::regclass AND amopfamily = refobjid)
+	UNION ALL
+	SELECT 'pg_opfamily'::regclass AS classid, amprocfamily AS objid, refclassid, refobjid, deptype FROM pg_depend d, pg_amproc p WHERE deptype NOT IN ('p', 'e', 'i') AND classid = 'pg_amproc'::regclass AND objid = p.oid AND NOT (refclassid = 'pg_opfamily'::regclass AND amprocfamily = refobjid)
+	ORDER BY 1,2
+2025-05-13 14:05:16.244 UTC [3246] LOG:  statement: SELECT DISTINCT attrelid FROM pg_attribute WHERE attacl IS NOT NULL
+2025-05-13 14:05:16.247 UTC [3246] LOG:  statement: SELECT objoid, classoid, objsubid, privtype, initprivs FROM pg_init_privs
+2025-05-13 14:05:16.247 UTC [3246] LOG:  statement: SELECT description, classoid, objoid, objsubid FROM pg_catalog.pg_description ORDER BY classoid, objoid, objsubid
+2025-05-13 14:05:16.255 UTC [3246] LOG:  statement: SELECT label, provider, classoid, objoid, objsubid FROM pg_catalog.pg_seclabel ORDER BY classoid, objoid, objsubid
+2025-05-13 14:05:16.257 UTC [3246] LOG:  statement: SELECT pg_catalog.current_schemas(false)
+2025-05-13 14:05:16.257 UTC [3246] LOG:  statement: PREPARE dumpEnumType(pg_catalog.oid) AS
+	SELECT oid, enumlabel FROM pg_catalog.pg_enum WHERE enumtypid = $1 ORDER BY enumsortorder
+2025-05-13 14:05:16.258 UTC [3246] LOG:  statement: EXECUTE dumpEnumType('16386')
+2025-05-13 14:05:16.258 UTC [3246] DETAIL:  prepare: PREPARE dumpEnumType(pg_catalog.oid) AS
+	SELECT oid, enumlabel FROM pg_catalog.pg_enum WHERE enumtypid = $1 ORDER BY enumsortorder
+2025-05-13 14:05:16.258 UTC [3246] LOG:  statement: PREPARE getColumnACLs(pg_catalog.oid) AS
+	SELECT at.attname, at.attacl, '{}' AS acldefault, pip.privtype, pip.initprivs FROM pg_catalog.pg_attribute at LEFT JOIN pg_catalog.pg_init_privs pip ON (at.attrelid = pip.objoid AND pip.classoid = 'pg_catalog.pg_class'::pg_catalog.regclass AND at.attnum = pip.objsubid) WHERE at.attrelid = $1 AND NOT at.attisdropped AND (at.attacl IS NOT NULL OR pip.initprivs IS NOT NULL) ORDER BY at.attnum
+2025-05-13 14:05:16.258 UTC [3246] LOG:  statement: EXECUTE getColumnACLs('6100')
+2025-05-13 14:05:16.258 UTC [3246] DETAIL:  prepare: PREPARE getColumnACLs(pg_catalog.oid) AS
+	SELECT at.attname, at.attacl, '{}' AS acldefault, pip.privtype, pip.initprivs FROM pg_catalog.pg_attribute at LEFT JOIN pg_catalog.pg_init_privs pip ON (at.attrelid = pip.objoid AND pip.classoid = 'pg_catalog.pg_class'::pg_catalog.regclass AND at.attnum = pip.objsubid) WHERE at.attrelid = $1 AND NOT at.attisdropped AND (at.attacl IS NOT NULL OR pip.initprivs IS NOT NULL) ORDER BY at.attnum
+2025-05-13 14:05:16.259 UTC [3246] LOG:  statement: SELECT format_type(seqtypid, NULL), seqstart, seqincrement, seqmax, seqmin, seqcache, seqcycle FROM pg_catalog.pg_sequence WHERE seqrelid = '16404'::oid
+2025-05-13 14:05:16.259 UTC [3246] LOG:  statement: SELECT format_type(seqtypid, NULL), seqstart, seqincrement, seqmax, seqmin, seqcache, seqcycle FROM pg_catalog.pg_sequence WHERE seqrelid = '16393'::oid
+2025-05-13 14:05:16.259 UTC [3246] LOG:  statement: SELECT last_value, is_called FROM public.currentbalance_id_seq
+2025-05-13 14:05:16.260 UTC [3246] LOG:  statement: SELECT last_value, is_called FROM public.transactions_id_seq
+2025-05-13 14:05:16.260 UTC [3246] LOG:  statement: COPY public.currentbalance (id, balance) TO stdout;
+2025-05-13 14:05:16.260 UTC [3246] LOG:  statement: COPY public.transactions (id, date, "time", type, amount, name, ref, fee, remarks, created_at, updated_at) TO stdout;
+2025-05-13 14:06:14.088 UTC [3288] LOG:  execute <unnamed>: SELECT * FROM Transactions WHERE date = $1 ORDER BY id DESC
+2025-05-13 14:06:14.088 UTC [3288] DETAIL:  parameters: $1 = '2025-05-13'
+2025-05-13 14:06:14.095 UTC [3288] LOG:  statement: SELECT * FROM Transactions ORDER BY id DESC LIMIT 1
+2025-05-13 14:06:14.975 UTC [3288] LOG:  execute <unnamed>: SELECT * FROM Transactions WHERE date = $1 ORDER BY id ASC
+2025-05-13 14:06:14.975 UTC [3288] DETAIL:  parameters: $1 = '2025-05-13'
+2025-05-13 14:07:24.878 UTC [3354] LOG:  statement: SELECT balance FROM CurrentBalance WHERE id = 1
+2025-05-13 14:07:24.879 UTC [3357] LOG:  statement: 
+	      SELECT type, COUNT(*) as count
+	      FROM Transactions
+	      GROUP BY type
+	    
+2025-05-13 14:07:24.879 UTC [3355] LOG:  execute <unnamed>: SELECT * FROM Transactions WHERE date = $1 ORDER BY id DESC
+2025-05-13 14:07:24.879 UTC [3355] DETAIL:  parameters: $1 = '2025-05-13'
+2025-05-13 14:07:24.879 UTC [3356] LOG:  execute <unnamed>: 
+	      SELECT date, SUM(CAST(amount AS DECIMAL)) as total_amount
+	      FROM Transactions
+	      WHERE date >= $1
+	      GROUP BY date
+	      ORDER BY date ASC
+	    
+2025-05-13 14:07:24.879 UTC [3356] DETAIL:  parameters: $1 = '2025-05-07'
+2025-05-13 14:07:24.886 UTC [3357] LOG:  statement: SELECT * FROM Transactions ORDER BY id DESC LIMIT 1
+2025-05-13 14:08:46.614 UTC [28] LOG:  checkpoint starting: time
+2025-05-13 14:08:47.050 UTC [28] LOG:  checkpoint complete: wrote 5 buffers (0.0%); 0 WAL file(s) added, 0 removed, 0 recycled; write=0.405 s, sync=0.010 s, total=0.436 s; sync files=5, longest=0.008 s, average=0.002 s; distance=17 kB, estimate=25 kB; lsn=0/1A79D88, redo lsn=0/1A79D50
+2025-05-13 14:17:06.887 UTC [1] LOG:  received fast shutdown request
+2025-05-13 14:17:06.916 UTC [1] LOG:  aborting any active transactions
+2025-05-13 14:17:06.936 UTC [1] LOG:  background worker "logical replication launcher" (PID 33) exited with exit code 1
+2025-05-13 14:17:06.936 UTC [28] LOG:  shutting down
+2025-05-13 14:17:06.939 UTC [28] LOG:  checkpoint starting: shutdown immediate
+2025-05-13 14:17:06.953 UTC [28] LOG:  checkpoint complete: wrote 0 buffers (0.0%); 0 WAL file(s) added, 0 removed, 0 recycled; write=0.001 s, sync=0.001 s, total=0.018 s; sync files=0, longest=0.000 s, average=0.000 s; distance=0 kB, estimate=23 kB; lsn=0/1A79E38, redo lsn=0/1A79E38
+2025-05-13 14:17:06.963 UTC [1] LOG:  database system is shut down
