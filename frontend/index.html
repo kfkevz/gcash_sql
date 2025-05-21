@@ -480,6 +480,9 @@
     .trend-controls button.next-btn:hover {
       background-color: #0056b3;
     }
+    #trendChart {
+      min-height: 200px;
+    }
   </style>
 </head>
 <body>
@@ -598,7 +601,7 @@
                   <label>Remarks:</label>
                   <input type="text" id="remarks" required>
                 </div>
-                <button type="submit">Add Transaction</button>
+                <button type="submit" id="submitButton">Add Transaction</button>
               </div>
             </form>
           </div>
@@ -789,8 +792,7 @@
                 <th>Actions</th>
               </tr>
             </thead>
-            <tbody id="transactionTable">
-            </tbody>
+            <tbody id="transactionTable"></tbody>
           </table>
           <div class="total-fee" id="totalFeeDisplay">Total Fee: 0.00 PHP</div>
         </div>
@@ -810,11 +812,11 @@
                 <th>Cash In</th>
                 <th>Cash Out</th>
                 <th>Load</th>
+                <th>Total Fee (PHP)</th>
                 <th>Last Transaction</th>
               </tr>
             </thead>
-            <tbody id="userTransactionsTable">
-            </tbody>
+            <tbody id="userTransactionsTable"></tbody>
           </table>
           <div class="pagination">
             <button id="userPrevPage" onclick="prevUserPage()">Previous</button>
@@ -833,14 +835,13 @@
                 <th>Total Fee (PHP)</th>
               </tr>
             </thead>
-            <tbody id="monthlyTransactionsTable">
-            </tbody>
+            <tbody id="monthlyTransactionsTable"></tbody>
           </table>
           <div class="fee-comparison">
             <div class="fee-comparison-text">
               <h2>Fee Comparison: This Month vs Last Month</h2>
-              <p id="thisMonthFee">This Month (April 2025): 0.00 PHP</p>
-              <p id="lastMonthFee">Last Month (March 2025): 0.00 PHP</p>
+              <p id="thisMonthFee">This Month: 0.00 PHP</p>
+              <p id="lastMonthFee">Last Month: 0.00 PHP</p>
               <p id="feeDifference">Difference: 0.00 PHP</p>
             </div>
             <div class="fee-comparison-chart">
@@ -998,11 +999,18 @@
         const data = await response.json();
         if (data.message) {
           alert(id ? 'Transaction updated successfully' : 'Transaction saved successfully');
+          // Reset form and button text
           document.getElementById('transactionForm').reset();
           document.getElementById('transactionId').value = '';
+          document.getElementById('submitButton').textContent = 'Add Transaction';
           document.getElementById('date').value = getManilaDate();
+          // Focus on the time field for the next transaction
+          document.getElementById('time').focus();
           fetchTransactions();
           fetchBalance();
+          fetchLatestTransaction();
+          fetchTransactionTrends();
+          fetchTypeBreakdown();
         }
       } catch (error) {
         console.error('Error saving transaction:', error);
@@ -1044,11 +1052,15 @@
       const date = document.getElementById('fetchDate').value || getManilaDate();
       const searchField = document.getElementById('searchField').value;
       const searchKeyword = document.getElementById('searchKeyword').value;
+      const sortBy = document.getElementById('sortBy').value;
       const url = new URL('http://localhost:5000/api/transactions');
       if (date) url.searchParams.append('date', date);
       if (searchField && searchKeyword) {
         url.searchParams.append('searchField', searchField);
         url.searchParams.append('search', searchKeyword);
+      }
+      if (sortBy && sortBy !== 'id') {
+        url.searchParams.append('sortBy', sortBy);
       }
 
       try {
@@ -1062,39 +1074,39 @@
         document.getElementById('totalFeeDisplay').textContent = `Total Fee: ${totalFee.toFixed(2)} PHP`;
 
         let totalCashIn = 0;
-        transactions.forEach(txn => {
-          if (txn.type === 'Cash In') totalCashIn += parseFloat(txn.amount);
+        transactions.forEach(t => {
+          if (t.type === 'Cash In') {
+            totalCashIn += parseFloat(t.amount) || 0;
+          }
         });
         document.getElementById('totalCashIn').textContent = `${totalCashIn.toFixed(2)} PHP`;
 
-        const tableBody = document.getElementById('transactionTable');
-        tableBody.innerHTML = '';
-        transactions.forEach(txn => {
-          const row = document.createElement('tr');
-          let remarksClass = '';
-          const remarksUpper = txn.remarks.toUpperCase();
-          if (remarksUpper.includes('SENT')) remarksClass = 'remarks-sent';
-          else if (remarksUpper.includes('CLAIMED') || remarksUpper.includes('CLAIM')) remarksClass = 'remarks-claimed';
-          else if (remarksUpper.includes('LOAD')) remarksClass = 'remarks-load';
-          else if (remarksUpper.includes('CUANA')) remarksClass = 'remarks-cuana';
-          else if (remarksUpper.includes('UNPAID') || remarksUpper.includes('UNCLAIMED')) remarksClass = 'remarks-unpaid';
-
-          row.innerHTML = `
-            <td>${txn.id}</td>
-            <td>${txn.date}</td>
-            <td>${txn.time.split(':').slice(0, 2).join(':')}</td>
-            <td>${txn.type}</td>
-            <td>${txn.amount}</td>
-            <td>${txn.name}</td>
-            <td>${txn.ref}</td>
-            <td>${txn.fee}</td>
-            <td class="${remarksClass}">${txn.remarks}</td>
-            <td>
-              <button onclick="editTransaction(${txn.id})" class="edit-btn">Edit</button>
-              <button onclick="deleteTransaction(${txn.id})" class="delete-btn">Delete</button>
-            </td>
+        const tbody = document.getElementById('transactionTable');
+        tbody.innerHTML = '';
+        transactions.forEach(t => {
+          const remarksClass = t.remarks.toLowerCase().includes('sent') ? 'remarks-sent' :
+                              t.remarks.toLowerCase().includes('claimed') ? 'remarks-claimed' :
+                              t.remarks.toLowerCase().includes('load') ? 'remarks-load' :
+                              t.remarks.toLowerCase().includes('cuana') ? 'remarks-cuana' :
+                              t.remarks.toLowerCase().includes('unpaid') ? 'remarks-unpaid' : '';
+          const row = `
+            <tr>
+              <td>${t.id}</td>
+              <td>${t.date}</td>
+              <td>${t.time.split(':').slice(0, 2).join(':')}</td>
+              <td>${t.type}</td>
+              <td>${t.amount}</td>
+              <td>${t.name}</td>
+              <td>${t.ref}</td>
+              <td>${t.fee}</td>
+              <td class="${remarksClass}">${t.remarks}</td>
+              <td>
+                <button class="edit-btn" onclick='editTransaction(${JSON.stringify(t)})'>Edit</button>
+                <button class="delete-btn" onclick="deleteTransaction(${t.id})">Delete</button>
+              </td>
+            </tr>
           `;
-          tableBody.appendChild(row);
+          tbody.innerHTML += row;
         });
 
         fetchLatestTransaction();
@@ -1103,28 +1115,38 @@
       }
     }
 
-    async function editTransaction(id) {
-      try {
-        const response = await fetch(`http://localhost:5000/api/transactions?searchField=id&search=${id}`);
-        const data = await response.json();
-        const transaction = data.transactions[0];
+    function editTransaction(transaction) {
+      // Switch to dashboard tab since the form is there
+      showSection('dashboard');
 
-        if (transaction) {
-          document.getElementById('transactionId').value = transaction.id;
-          document.getElementById('date').value = transaction.date;
-          document.getElementById('time').value = transaction.time;
-          document.getElementById('type').value = transaction.type;
-          document.getElementById('amount').value = transaction.amount;
-          document.getElementById('name').value = transaction.name;
-          document.getElementById('ref').value = transaction.ref;
-          document.getElementById('fee').value = transaction.fee;
-          document.getElementById('remarks').value = transaction.remarks;
-          document.getElementById('transactionForm').querySelector('button').textContent = 'Update Transaction';
-          showSection('dashboard');
-        }
-      } catch (error) {
-        console.error('Error fetching transaction for edit:', error);
-      }
+      // Populate form fields
+      document.getElementById('transactionId').value = transaction.id;
+      document.getElementById('date').value = transaction.date;
+      document.getElementById('time').value = transaction.time;
+      document.getElementById('type').value = transaction.type;
+      document.getElementById('amount').value = transaction.amount;
+      document.getElementById('name').value = transaction.name;
+      document.getElementById('ref').value = transaction.ref;
+      document.getElementById('fee').value = transaction.fee;
+      document.getElementById('remarks').value = transaction.remarks;
+
+      // Ensure all fields are editable
+      document.getElementById('date').disabled = false;
+      document.getElementById('time').disabled = false;
+      document.getElementById('type').disabled = false;
+      document.getElementById('amount').disabled = false;
+      document.getElementById('name').disabled = false;
+      document.getElementById('ref').disabled = false;
+      document.getElementById('fee').disabled = false;
+      document.getElementById('remarks').disabled = false;
+
+      // Change submit button text to indicate editing
+      document.getElementById('submitButton').textContent = 'Update Transaction';
+
+      // Scroll to form and focus on the first field
+      const form = document.getElementById('transactionForm');
+      form.scrollIntoView({ behavior: 'smooth' });
+      document.getElementById('date').focus();
     }
 
     async function deleteTransaction(id) {
@@ -1139,6 +1161,9 @@
           alert('Transaction deleted successfully');
           fetchTransactions();
           fetchBalance();
+          fetchLatestTransaction();
+          fetchTransactionTrends();
+          fetchTypeBreakdown();
         }
       } catch (error) {
         console.error('Error deleting transaction:', error);
@@ -1146,73 +1171,48 @@
       }
     }
 
-    function clearSearch() {
-      document.getElementById('searchKeyword').value = '';
-      document.getElementById('searchField').value = 'id';
-      fetchTransactions();
-    }
-
     async function downloadSummary() {
       const date = document.getElementById('fetchDate').value || getManilaDate();
       const sortBy = document.getElementById('sortBy').value;
-
-      try {
-        const url = new URL('http://localhost:5000/api/transactions/download');
-        url.searchParams.append('date', date);
-        if (sortBy && sortBy !== 'id') {
-          url.searchParams.append('sortBy', sortBy);
-        }
-
-        const response = await fetch(url);
-        const blob = await response.blob();
-        const urlObject = window.URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.href = urlObject;
-        a.download = `transaction-summary-${date}.pdf`;
-        document.body.appendChild(a);
-        a.click();
-        document.body.removeChild(a);
-        window.URL.revokeObjectURL(urlObject);
-      } catch (error) {
-        console.error('Error downloading summary:', error);
-        alert('Failed to download summary');
-      }
+      const url = `http://localhost:5000/api/transactions/download?date=${date}${sortBy && sortBy !== 'id' ? `&sortBy=${sortBy}` : ''}`;
+      window.location.href = url;
     }
 
-    async function fetchUserTransactions(page = currentUserPage) {
-      try {
-        const url = new URL('http://localhost:5000/api/reports/user-transactions');
-        url.searchParams.append('page', page);
-        url.searchParams.append('limit', usersPerPage);
-        const searchTerm = document.getElementById('userSearch').value.trim();
-        if (searchTerm) {
-          url.searchParams.append('search', searchTerm);
-        }
+    function clearSearch() {
+      document.getElementById('searchField').value = 'id';
+      document.getElementById('searchKeyword').value = '';
+      document.getElementById('fetchDate').value = getManilaDate();
+      document.getElementById('sortBy').value = 'id';
+      fetchTransactions();
+    }
 
-        const response = await fetch(url);
+    async function fetchUserTransactions() {
+      const search = document.getElementById('userSearch').value;
+      try {
+        const response = await fetch(`http://localhost:5000/api/reports/user-transactions?page=${currentUserPage}&limit=${usersPerPage}${search ? `&search=${encodeURIComponent(search)}` : ''}`);
         const data = await response.json();
         const userTransactions = data.userTransactions || [];
         const totalUsers = data.totalUsers || 0;
 
-        const tableBody = document.getElementById('userTransactionsTable');
-        tableBody.innerHTML = '';
-        userTransactions.forEach(user => {
-          const row = document.createElement('tr');
-          row.innerHTML = `
-            <td>${user.name}</td>
-            <td>${user.cashIn}</td>
-            <td>${user.cashOut}</td>
-            <td>${user.load}</td>
-            <td>${user.lastTransaction || '-'}</td>
+        const tbody = document.getElementById('userTransactionsTable');
+        tbody.innerHTML = '';
+        userTransactions.forEach(u => {
+          const row = `
+            <tr>
+              <td>${u.name}</td>
+              <td>${u.cashIn}</td>
+              <td>${u.cashOut}</td>
+              <td>${u.load}</td>
+              <td>${u.totalFee.toFixed(2)}</td>
+              <td>${u.lastTransaction ? new Date(u.lastTransaction).toLocaleString() : '-'}</td>
+            </tr>
           `;
-          tableBody.appendChild(row);
+          tbody.innerHTML += row;
         });
 
-        const totalPages = Math.ceil(totalUsers / usersPerPage);
-        currentUserPage = page;
         document.getElementById('userPageNumber').textContent = `Page ${currentUserPage}`;
         document.getElementById('userPrevPage').disabled = currentUserPage === 1;
-        document.getElementById('userNextPage').disabled = currentUserPage === totalPages || totalPages === 0;
+        document.getElementById('userNextPage').disabled = currentUserPage * usersPerPage >= totalUsers;
       } catch (error) {
         console.error('Error fetching user transactions:', error);
       }
@@ -1220,31 +1220,34 @@
 
     function prevUserPage() {
       if (currentUserPage > 1) {
-        fetchUserTransactions(currentUserPage - 1);
+        currentUserPage--;
+        fetchUserTransactions();
       }
     }
 
     function nextUserPage() {
-      fetchUserTransactions(currentUserPage + 1);
+      currentUserPage++;
+      fetchUserTransactions();
     }
 
     async function fetchMonthlyTransactions() {
       try {
         const response = await fetch('http://localhost:5000/api/reports/monthly-transactions');
         const data = await response.json();
-        const monthlyData = data.monthlyTransactions || [];
+        const monthlyTransactions = data.monthlyTransactions || [];
 
-        const tableBody = document.getElementById('monthlyTransactionsTable');
-        tableBody.innerHTML = '';
-        monthlyData.forEach(month => {
-          const row = document.createElement('tr');
-          row.innerHTML = `
-            <td>${month.month}</td>
-            <td>${month.totalTransactions}</td>
-            <td>${month.totalAmount.toFixed(2)}</td>
-            <td>${month.totalFee.toFixed(2)}</td>
+        const tbody = document.getElementById('monthlyTransactionsTable');
+        tbody.innerHTML = '';
+        monthlyTransactions.forEach(m => {
+          const row = `
+            <tr>
+              <td>${m.month}</td>
+              <td>${m.totalTransactions}</td>
+              <td>${m.totalAmount.toFixed(2)}</td>
+              <td>${m.totalFee.toFixed(2)}</td>
+            </tr>
           `;
-          tableBody.appendChild(row);
+          tbody.innerHTML += row;
         });
       } catch (error) {
         console.error('Error fetching monthly transactions:', error);
@@ -1255,43 +1258,30 @@
       try {
         const response = await fetch('http://localhost:5000/api/reports/fee-comparison');
         const data = await response.json();
-        const { thisMonthFee, lastMonthFee } = data;
 
-        document.getElementById('thisMonthFee').textContent = `This Month (April 2025): ${thisMonthFee.toFixed(2)} PHP`;
-        document.getElementById('lastMonthFee').textContent = `Last Month (March 2025): ${lastMonthFee.toFixed(2)} PHP`;
-        document.getElementById('feeDifference').textContent = `Difference: ${(thisMonthFee - lastMonthFee).toFixed(2)} PHP`;
+        document.getElementById('thisMonthFee').textContent = `${data.thisMonthName}: ${data.thisMonthFee.toFixed(2)} PHP`;
+        document.getElementById('lastMonthFee').textContent = `${data.lastMonthName}: ${data.lastMonthFee.toFixed(2)} PHP`;
+        const difference = data.thisMonthFee - data.lastMonthFee;
+        document.getElementById('feeDifference').textContent = `Difference: ${difference.toFixed(2)} PHP`;
 
+        const ctx = document.getElementById('feeComparisonChart').getContext('2d');
         if (feeChart) {
           feeChart.destroy();
         }
-
-        const ctx = document.getElementById('feeComparisonChart').getContext('2d');
         feeChart = new Chart(ctx, {
           type: 'bar',
           data: {
-            labels: ['Last Month (Mar 2025)', 'This Month (Apr 2025)'],
+            labels: [data.lastMonthName, data.thisMonthName],
             datasets: [{
-              label: 'Total Fee (PHP)',
-              data: [lastMonthFee, thisMonthFee],
+              label: 'Fees (PHP)',
+              data: [data.lastMonthFee, data.thisMonthFee],
               backgroundColor: ['#007bff', '#28a745'],
-              borderColor: ['#0056b3', '#218838'],
-              borderWidth: 1
             }]
           },
           options: {
+            responsive: true,
             scales: {
-              y: {
-                beginAtZero: true,
-                title: {
-                  display: true,
-                  text: 'Total Fee (PHP)'
-                }
-              }
-            },
-            plugins: {
-              legend: {
-                display: false
-              }
+              y: { beginAtZero: true, title: { display: true, text: 'Fees (PHP)' } }
             }
           }
         });
@@ -1301,74 +1291,100 @@
     }
 
     async function fetchTransactionTrends() {
+      const startDate = document.getElementById('trendStartDate').value;
+      const endDate = document.getElementById('trendEndDate').value;
+      if (!startDate || !endDate) {
+        console.warn('Start or end date is missing');
+        return;
+      }
       try {
-        const startDate = document.getElementById('trendStartDate').value;
-        const endDate = document.getElementById('trendEndDate').value;
-
-        if (!startDate || !endDate) {
-          alert('Please select both start and end dates.');
-          return;
-        }
-        if (new Date(startDate) > new Date(endDate)) {
-          alert('Start date cannot be later than end date.');
-          return;
-        }
-
-        const url = new URL('http://localhost:5000/api/reports/trend');
-        url.searchParams.append('startDate', startDate);
-        url.searchParams.append('endDate', endDate);
-
-        const response = await fetch(url);
+        console.log(`Fetching trends for ${startDate} to ${endDate}`);
+        const response = await fetch(`http://localhost:5000/api/reports/trend?startDate=${startDate}&endDate=${endDate}`);
         const data = await response.json();
-        const labels = data.map(item => item.date);
-        const amounts = data.map(item => item.totalAmount);
+        console.log('Trend data:', data);
+        updateTrendChart(data);
+      } catch (error) {
+        console.error('Error fetching transaction trends:', error);
+      }
+    }
 
-        if (trendChart) {
-          trendChart.destroy();
+    function updateTrendChart(data) {
+      const ctx = document.getElementById('trendChart').getContext('2d');
+      let labels = data.map(item => item.date);
+      let amounts = data.map(item => parseFloat(item.total_amount));
+
+      if (!labels.length) {
+        // Generate default labels for the date range if no data
+        const start = new Date(document.getElementById('trendStartDate').value);
+        const end = new Date(document.getElementById('trendEndDate').value);
+        labels = [];
+        amounts = [];
+        for (let d = new Date(start); d <= end; d.setDate(d.getDate() + 1)) {
+          labels.push(d.toISOString().split('T')[0]);
+          amounts.push(0);
         }
+      }
 
-        const ctx = document.getElementById('trendChart').getContext('2d');
-        trendChart = new Chart(ctx, {
-          type: 'line',
+      if (trendChart) {
+        trendChart.destroy();
+      }
+
+      trendChart = new Chart(ctx, {
+        type: 'line',
+        data: {
+          labels: labels,
+          datasets: [{
+            label: 'Total Amount (PHP)',
+            data: amounts,
+            borderColor: '#007bff',
+            fill: false,
+          }]
+        },
+        options: {
+          responsive: true,
+          scales: {
+            x: { title: { display: true, text: 'Date' } },
+            y: { 
+              title: { display: true, text: 'Amount (PHP)' }, 
+              beginAtZero: true 
+            }
+          },
+          plugins: {
+            title: {
+              display: !data.length,
+              text: 'No transactions in this date range',
+              color: '#666',
+              font: { size: 14 }
+            }
+          }
+        }
+      });
+    }
+
+    async function fetchTypeBreakdown() {
+      try {
+        const response = await fetch('http://localhost:5000/api/reports/type-breakdown');
+        const data = await response.json();
+
+        const ctx = document.getElementById('typeBreakdownChart').getContext('2d');
+        if (typeBreakdownChart) {
+          typeBreakdownChart.destroy();
+        }
+        typeBreakdownChart = new Chart(ctx, {
+          type: 'pie',
           data: {
-            labels: labels,
+            labels: Object.keys(data),
             datasets: [{
-              label: 'Total Amount (PHP)',
-              data: amounts,
-              borderColor: '#007bff',
-              backgroundColor: 'rgba(0, 123, 255, 0.1)',
-              fill: true,
-              tension: 0.3
+              data: Object.values(data),
+              backgroundColor: ['#007bff', '#28a745', '#dc3545'],
             }]
           },
           options: {
-            scales: {
-              y: {
-                beginAtZero: true,
-                title: {
-                  display: true,
-                  text: 'Amount (PHP)'
-                }
-              },
-              x: {
-                title: {
-                  display: true,
-                  text: 'Date'
-                }
-              }
-            },
-            plugins: {
-              legend: {
-                display: true,
-                position: 'top'
-              }
-            }
+            responsive: true,
           }
         });
-
-        document.querySelector('.trend-chart h2').textContent = `Transaction Trends (${startDate} to ${endDate})`;
       } catch (error) {
-        console.error('Error fetching transaction trends:', error);
+        console.error('Error fetching type breakdown:', error);
       }
     }
 
@@ -1377,95 +1393,39 @@
       const endDateInput = document.getElementById('trendEndDate');
       const startDate = new Date(startDateInput.value);
       const endDate = new Date(endDateInput.value);
-
-      const timeDiff = endDate - startDate;
-      const daysDiff = Math.ceil(timeDiff / (1000 * 60 * 60 * 24)) + 1;
+      const diffDays = Math.round((endDate - startDate) / (1000 * 60 * 60 * 24)) + 1;
 
       if (direction === 'prev') {
-        startDate.setDate(startDate.getDate() - daysDiff);
-        endDate.setDate(endDate.getDate() - daysDiff);
+        startDate.setDate(startDate.getDate() - diffDays);
+        endDate.setDate(endDate.getDate() - diffDays);
       } else if (direction === 'next') {
-        startDate.setDate(startDate.getDate() + daysDiff);
-        endDate.setDate(endDate.getDate() + daysDiff);
-      }
-
-      const today = new Date(getManilaDate());
-      if (endDate > today) {
-        endDate.setDate(today.getDate());
-        startDate.setDate(endDate.getDate() - (daysDiff - 1));
+        startDate.setDate(startDate.getDate() + diffDays);
+        endDate.setDate(endDate.getDate() + diffDays);
       }
 
       startDateInput.value = startDate.toISOString().split('T')[0];
       endDateInput.value = endDate.toISOString().split('T')[0];
-
       fetchTransactionTrends();
-    }
-
-    async function fetchTypeBreakdown() {
-      try {
-        const response = await fetch('http://localhost:5000/api/reports/type-breakdown');
-        const data = await response.json();
-        const labels = Object.keys(data);
-        const values = Object.values(data);
-
-        if (typeBreakdownChart) {
-          typeBreakdownChart.destroy();
-        }
-
-        const ctx = document.getElementById('typeBreakdownChart').getContext('2d');
-        typeBreakdownChart = new Chart(ctx, {
-          type: 'pie',
-          data: {
-            labels: labels,
-            datasets: [{
-              data: values,
-              backgroundColor: ['#007bff', '#28a745', '#dc3545'],
-              borderColor: ['#0056b3', '#218838', '#c82333'],
-              borderWidth: 1
-            }]
-          },
-          options: {
-            plugins: {
-              legend: {
-                position: 'bottom'
-              }
-            }
-          }
-        });
-      } catch (error) {
-        console.error('Error fetching type breakdown:', error);
-      }
     }
 
     async function backupDatabase() {
       try {
-        const response = await fetch('http://localhost:5000/api/backup');
-        const blob = await response.blob();
-        const url = window.URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = `gcash_backup_${new Date().toISOString().replace(/[:.]/g, '-')}.sql`;
-        document.body.appendChild(a);
-        a.click();
-        document.body.removeChild(a);
-        window.URL.revokeObjectURL(url);
-        alert('Backup created successfully');
+        window.location.href = 'http://localhost:5000/api/backup';
       } catch (error) {
-        console.error('Error creating backup:', error);
-        alert('Failed to create backup');
+        console.error('Error initiating backup:', error);
+        alert('Failed to initiate backup');
       }
     }
 
     async function restoreDatabase() {
       const fileInput = document.getElementById('restoreFile');
-      const file = fileInput.files[0];
-      if (!file) {
+      if (!fileInput.files.length) {
         alert('Please select a backup file to restore.');
         return;
       }
 
       const formData = new FormData();
-      formData.append('backupFile', file);
+      formData.append('backupFile', fileInput.files[0]);
 
       try {
         const response = await fetch('http://localhost:5000/api/restore', {
@@ -1475,12 +1435,12 @@
         const data = await response.json();
         if (data.message) {
           alert('Database restored successfully');
-          fileInput.value = '';
           fetchBalance();
           fetchTransactions();
           fetchLatestTransaction();
           fetchTransactionTrends();
           fetchTypeBreakdown();
+          fileInput.value = '';
         }
       } catch (error) {
         console.error('Error restoring database:', error);

@@ -1,0 +1,59 @@
+2025-05-17 03:37:46.059 UTC [1] LOG:  starting PostgreSQL 16.8 (Debian 16.8-1.pgdg120+1) on x86_64-pc-linux-gnu, compiled by gcc (Debian 12.2.0-14) 12.2.0, 64-bit
+2025-05-17 03:37:46.060 UTC [1] LOG:  listening on IPv4 address "0.0.0.0", port 5432
+2025-05-17 03:37:46.060 UTC [1] LOG:  listening on IPv6 address "::", port 5432
+2025-05-17 03:37:46.069 UTC [1] LOG:  listening on Unix socket "/var/run/postgresql/.s.PGSQL.5432"
+2025-05-17 03:37:46.081 UTC [30] LOG:  database system was interrupted; last known up at 2025-05-15 16:46:16 UTC
+2025-05-17 03:37:47.163 UTC [30] LOG:  database system was not properly shut down; automatic recovery in progress
+2025-05-17 03:37:47.167 UTC [30] LOG:  redo starts at 0/19CB238
+2025-05-17 03:37:47.169 UTC [30] LOG:  invalid record length at 0/19CDC40: expected at least 24, got 0
+2025-05-17 03:37:47.169 UTC [30] LOG:  redo done at 0/19CDC08 system usage: CPU: user: 0.00 s, system: 0.00 s, elapsed: 0.00 s
+2025-05-17 03:37:47.180 UTC [28] LOG:  checkpoint starting: end-of-recovery immediate wait
+2025-05-17 03:37:47.203 UTC [28] LOG:  checkpoint complete: wrote 8 buffers (0.0%); 0 WAL file(s) added, 0 removed, 0 recycled; write=0.009 s, sync=0.005 s, total=0.027 s; sync files=7, longest=0.003 s, average=0.001 s; distance=10 kB, estimate=10 kB; lsn=0/19CDC40, redo lsn=0/19CDC40
+2025-05-17 03:37:47.216 UTC [1] LOG:  database system is ready to accept connections
+2025-05-17 03:37:47.565 UTC [35] LOG:  statement: 
+	      SELECT EXISTS (
+	        SELECT 1 FROM pg_type WHERE typname = 'transaction_type'
+	      ) AS type_exists;
+	    
+2025-05-17 03:37:47.580 UTC [35] LOG:  statement: 
+	        SELECT e.enumlabel
+	        FROM pg_enum e
+	        JOIN pg_type t ON e.enumtypid = t.oid
+	        WHERE t.typname = 'transaction_type'
+	        ORDER BY e.enumsortorder;
+	      
+2025-05-17 03:37:47.585 UTC [35] LOG:  statement: 
+	      CREATE TABLE IF NOT EXISTS Transactions (
+	        id SERIAL PRIMARY KEY,
+	        date TEXT NOT NULL,
+	        time TEXT NOT NULL,
+	        type transaction_type NOT NULL,
+	        amount TEXT NOT NULL,
+	        name TEXT NOT NULL,
+	        ref TEXT NOT NULL,
+	        fee TEXT NOT NULL,
+	        remarks TEXT NOT NULL,
+	        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+	        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+	      );
+	    
+2025-05-17 03:37:47.586 UTC [35] LOG:  statement: 
+	      DO $$ 
+	      BEGIN
+	        IF NOT EXISTS (SELECT 1 FROM information_schema.columns 
+	                       WHERE table_name = 'transactions' AND column_name = 'created_at') THEN
+	          ALTER TABLE Transactions ADD COLUMN created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP;
+	        END IF;
+	        IF NOT EXISTS (SELECT 1 FROM information_schema.columns 
+	                       WHERE table_name = 'transactions' AND column_name = 'updated_at') THEN
+	          ALTER TABLE Transactions ADD COLUMN updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP;
+	        END IF;
+	      END $$;
+	    
+2025-05-17 03:37:47.610 UTC [35] LOG:  statement: 
+	      CREATE TABLE IF NOT EXISTS CurrentBalance (
+	        id SERIAL PRIMARY KEY,
+	        balance DECIMAL NOT NULL DEFAULT 0.00
+	      );
+	    
+2025-05-17 03:37:47.611 UTC [35] LOG:  statement: SELECT * FROM CurrentBalance

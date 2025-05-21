@@ -1,0 +1,131 @@
+2025-05-15 16:26:29.328 UTC [1] LOG:  starting PostgreSQL 16.8 (Debian 16.8-1.pgdg120+1) on x86_64-pc-linux-gnu, compiled by gcc (Debian 12.2.0-14) 12.2.0, 64-bit
+2025-05-15 16:26:29.329 UTC [1] LOG:  listening on IPv4 address "0.0.0.0", port 5432
+2025-05-15 16:26:29.329 UTC [1] LOG:  listening on IPv6 address "::", port 5432
+2025-05-15 16:26:29.336 UTC [1] LOG:  listening on Unix socket "/var/run/postgresql/.s.PGSQL.5432"
+2025-05-15 16:26:29.344 UTC [30] LOG:  database system was shut down at 2025-05-15 16:26:03 UTC
+2025-05-15 16:26:29.351 UTC [1] LOG:  database system is ready to accept connections
+2025-05-15 16:26:35.550 UTC [43] LOG:  statement: 
+	      SELECT EXISTS (
+	        SELECT 1 FROM pg_type WHERE typname = 'transaction_type'
+	      ) AS type_exists;
+	    
+2025-05-15 16:26:35.562 UTC [43] LOG:  statement: 
+	        SELECT e.enumlabel
+	        FROM pg_enum e
+	        JOIN pg_type t ON e.enumtypid = t.oid
+	        WHERE t.typname = 'transaction_type'
+	        ORDER BY e.enumsortorder;
+	      
+2025-05-15 16:26:35.566 UTC [43] LOG:  statement: 
+	      CREATE TABLE IF NOT EXISTS Transactions (
+	        id SERIAL PRIMARY KEY,
+	        date TEXT NOT NULL,
+	        time TEXT NOT NULL,
+	        type transaction_type NOT NULL,
+	        amount TEXT NOT NULL,
+	        name TEXT NOT NULL,
+	        ref TEXT NOT NULL,
+	        fee TEXT NOT NULL,
+	        remarks TEXT NOT NULL,
+	        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+	        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+	      );
+	    
+2025-05-15 16:26:35.567 UTC [43] LOG:  statement: 
+	      DO $$ 
+	      BEGIN
+	        IF NOT EXISTS (SELECT 1 FROM information_schema.columns 
+	                       WHERE table_name = 'transactions' AND column_name = 'created_at') THEN
+	          ALTER TABLE Transactions ADD COLUMN created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP;
+	        END IF;
+	        IF NOT EXISTS (SELECT 1 FROM information_schema.columns 
+	                       WHERE table_name = 'transactions' AND column_name = 'updated_at') THEN
+	          ALTER TABLE Transactions ADD COLUMN updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP;
+	        END IF;
+	      END $$;
+	    
+2025-05-15 16:26:35.593 UTC [43] LOG:  statement: 
+	      CREATE TABLE IF NOT EXISTS CurrentBalance (
+	        id SERIAL PRIMARY KEY,
+	        balance DECIMAL NOT NULL DEFAULT 0.00
+	      );
+	    
+2025-05-15 16:26:35.593 UTC [43] LOG:  statement: SELECT * FROM CurrentBalance
+2025-05-15 16:26:58.195 UTC [60] LOG:  statement: SELECT balance FROM CurrentBalance WHERE id = 1
+2025-05-15 16:26:58.196 UTC [62] LOG:  statement: SELECT * FROM Transactions ORDER BY id DESC LIMIT 1
+2025-05-15 16:26:58.198 UTC [61] LOG:  execute <unnamed>: SELECT * FROM Transactions WHERE date = $1 ORDER BY id DESC
+2025-05-15 16:26:58.198 UTC [61] DETAIL:  parameters: $1 = '2025-05-16'
+2025-05-15 16:26:58.200 UTC [63] LOG:  execute <unnamed>: 
+	      SELECT 
+	        date,
+	        SUM(CAST(amount AS DECIMAL)) AS total_amount
+	      FROM Transactions
+	      WHERE date >= $1 AND date <= $2
+	      GROUP BY date
+	      ORDER BY date ASC
+	    
+2025-05-15 16:26:58.200 UTC [63] DETAIL:  parameters: $1 = '2025-05-09', $2 = '2025-05-16'
+2025-05-15 16:26:58.204 UTC [64] LOG:  statement: 
+	      SELECT 
+	        type,
+	        COUNT(*) AS count
+	      FROM Transactions
+	      GROUP BY type
+	    
+2025-05-15 16:26:58.249 UTC [64] LOG:  statement: SELECT * FROM Transactions ORDER BY id DESC LIMIT 1
+2025-05-15 16:27:00.761 UTC [64] LOG:  execute <unnamed>: SELECT * FROM Transactions WHERE date = $1 ORDER BY id DESC
+2025-05-15 16:27:00.761 UTC [64] DETAIL:  parameters: $1 = '2025-05-16'
+2025-05-15 16:27:00.765 UTC [64] LOG:  statement: SELECT * FROM Transactions ORDER BY id DESC LIMIT 1
+2025-05-15 16:27:07.074 UTC [62] LOG:  statement: 
+	      SELECT 
+	        TO_CHAR(TO_DATE(date, 'YYYY-MM-DD'), 'YYYY-MM') AS month,
+	        COUNT(*) AS total_transactions,
+	        SUM(CAST(amount AS DECIMAL)) AS total_amount,
+	        SUM(CAST(fee AS DECIMAL)) AS total_fee
+	      FROM Transactions
+	      GROUP BY TO_CHAR(TO_DATE(date, 'YYYY-MM-DD'), 'YYYY-MM')
+	      ORDER BY month DESC
+	    
+2025-05-15 16:27:07.075 UTC [61] LOG:  statement: 
+	      SELECT 
+	        COALESCE(SUM(CASE 
+	          WHEN TO_CHAR(TO_DATE(date, 'YYYY-MM-DD'), 'YYYY-MM') = TO_CHAR(CURRENT_DATE, 'YYYY-MM') 
+	          THEN CAST(fee AS DECIMAL) 
+	          ELSE 0 
+	        END), 0) AS this_month_fee,
+	        COALESCE(SUM(CASE 
+	          WHEN TO_CHAR(TO_DATE(date, 'YYYY-MM-DD'), 'YYYY-MM') = TO_CHAR(CURRENT_DATE - INTERVAL '1 month', 'YYYY-MM') 
+	          THEN CAST(fee AS DECIMAL) 
+	          ELSE 0 
+	        END), 0) AS last_month_fee,
+	        TO_CHAR(CURRENT_DATE, 'MMMM YYYY') AS this_month_name,
+	        TO_CHAR(CURRENT_DATE - INTERVAL '1 month', 'MMMM YYYY') AS last_month_name
+	      FROM Transactions
+	      WHERE TO_CHAR(TO_DATE(date, 'YYYY-MM-DD'), 'YYYY-MM') IN (
+	        TO_CHAR(CURRENT_DATE, 'YYYY-MM'),
+	        TO_CHAR(CURRENT_DATE - INTERVAL '1 month', 'YYYY-MM')
+	      );
+	    
+2025-05-15 16:27:07.076 UTC [64] LOG:  execute <unnamed>: 
+	      SELECT 
+	        name,
+	        SUM(CASE WHEN type = 'Cash In' THEN 1 ELSE 0 END) AS cash_in,
+	        SUM(CASE WHEN type = 'Cash Out' THEN 1 ELSE 0 END) AS cash_out,
+	        SUM(CASE WHEN type = 'Load' THEN 1 ELSE 0 END) AS load,
+	        SUM(CAST(fee AS DECIMAL)) AS total_fee,
+	        MAX(updated_at) AS last_transaction
+	      FROM Transactions
+	    
+	      GROUP BY name
+	      ORDER BY name ASC
+	      LIMIT $1 OFFSET $2
+	    
+2025-05-15 16:27:07.076 UTC [64] DETAIL:  parameters: $1 = '10', $2 = '0'
+2025-05-15 16:27:07.077 UTC [64] LOG:  statement: SELECT COUNT(DISTINCT name) AS total FROM Transactions
+2025-05-15 16:28:09.556 UTC [1] LOG:  received fast shutdown request
+2025-05-15 16:28:09.559 UTC [1] LOG:  aborting any active transactions
+2025-05-15 16:28:09.561 UTC [1] LOG:  background worker "logical replication launcher" (PID 33) exited with exit code 1
+2025-05-15 16:28:09.561 UTC [28] LOG:  shutting down
+2025-05-15 16:28:09.565 UTC [28] LOG:  checkpoint starting: shutdown immediate
+2025-05-15 16:28:09.586 UTC [28] LOG:  checkpoint complete: wrote 3 buffers (0.0%); 0 WAL file(s) added, 0 removed, 0 recycled; write=0.005 s, sync=0.003 s, total=0.025 s; sync files=2, longest=0.002 s, average=0.002 s; distance=0 kB, estimate=0 kB; lsn=0/1A987C8, redo lsn=0/1A987C8
+2025-05-15 16:28:09.590 UTC [1] LOG:  database system is shut down
