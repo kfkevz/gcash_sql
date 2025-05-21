@@ -59,7 +59,7 @@ async function initializeDatabase() {
       `);
       const expectedValues = ['Cash In', 'Cash Out', 'Load'];
       const currentValues = enumValues.rows.map(row => row.enumlabel);
-      
+
       if (JSON.stringify(currentValues) !== JSON.stringify(expectedValues)) {
         // Drop and recreate ENUM only if values are incorrect
         await pool.query(`
@@ -93,13 +93,13 @@ async function initializeDatabase() {
 
     // Add created_at and updated_at columns if they don't exist
     await pool.query(`
-      DO $$ 
+      DO $$
       BEGIN
-        IF NOT EXISTS (SELECT 1 FROM information_schema.columns 
+        IF NOT EXISTS (SELECT 1 FROM information_schema.columns
                        WHERE table_name = 'transactions' AND column_name = 'created_at') THEN
           ALTER TABLE Transactions ADD COLUMN created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP;
         END IF;
-        IF NOT EXISTS (SELECT 1 FROM information_schema.columns 
+        IF NOT EXISTS (SELECT 1 FROM information_schema.columns
                        WHERE table_name = 'transactions' AND column_name = 'updated_at') THEN
           ALTER TABLE Transactions ADD COLUMN updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP;
         END IF;
@@ -119,6 +119,16 @@ async function initializeDatabase() {
     if (balanceCheck.rows.length === 0) {
       await pool.query('INSERT INTO CurrentBalance (balance) VALUES (0.00)');
     }
+
+    // Create Notes table if it doesn't exist
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS Notes (
+        id SERIAL PRIMARY KEY,
+        content TEXT NOT NULL,
+        is_completed BOOLEAN DEFAULT FALSE,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      );
+    `);
 
     console.log('Database initialized successfully');
   } catch (error) {
@@ -194,14 +204,26 @@ app.post('/api/balance', async (req, res) => {
 app.post('/api/transactions', async (req, res) => {
   try {
     const { date, time, type, amount, name, ref, fee, remarks } = req.body;
+
+    // Validate all required fields
+    if (!date || !time || !type || !amount || !name || !ref || !fee || !remarks) {
+      return res.status(400).json({ error: 'All fields (date, time, type, amount, name, ref, fee, remarks) are required' });
+    }
+
+    const amountNum = parseFloat(amount);
+    const feeNum = parseFloat(fee);
+    if (isNaN(amountNum) || amountNum <= 0 || isNaN(feeNum) || feeNum < 0) {
+      return res.status(400).json({ error: 'Amount and fee must be positive numbers' });
+    }
+
     const result = await pool.query(
       `INSERT INTO Transactions (date, time, type, amount, name, ref, fee, remarks, created_at, updated_at)
        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
        RETURNING id`,
-      [date, time, type, amount, name, ref, fee, remarks]
+      [date, time, type, amountNum.toString(), name, ref, feeNum.toString(), remarks]
     );
 
-    await updateBalanceBasedOnTransaction(type, amount, 'subtract');
+    await updateBalanceBasedOnTransaction(type, amountNum.toString(), 'subtract');
 
     res.status(200).json({ message: 'Transaction saved', id: result.rows[0].id });
   } catch (error) {
@@ -270,14 +292,70 @@ app.get('/api/transactions', async (req, res) => {
 
     const result = await pool.query(query, queryParams);
     const transactions = result.rows || [];
-    const totalFee = transactions.reduce((sum, txn) => sum + (parseFloat(txn.fee) || 0), 0);
-    res.status(200).json({ transactions, totalFee });
+
+    // Calculate totals and counts
+    const totals = transactions.reduce(
+      (acc, txn) => {
+        const amount = parseFloat(txn.amount) || 0;
+        const fee = parseFloat(txn.fee) || 0;
+        acc.totalFee += fee;
+        if (txn.type === 'Cash In') acc.totalCashIn += amount;
+        if (txn.type === 'Cash Out') acc.totalCashOut += amount;
+        if (txn.type === 'Load') acc.totalLoad += amount;
+        if (txn.remarks.toUpperCase().includes('UNCLAIMED')) acc.unclaimedCount++;
+        if (txn.remarks.toUpperCase().includes('UNPAID')) acc.unpaidCount++;
+        return acc;
+      },
+      { totalFee: 0, totalCashIn: 0, totalCashOut: 0, totalLoad: 0, unclaimedCount: 0, unpaidCount: 0 }
+    );
+
+    res.status(200).json({
+      transactions,
+      totalFee: totals.totalFee,
+      totalCashIn: totals.totalCashIn,
+      totalCashOut: totals.totalCashOut,
+      totalLoad: totals.totalLoad,
+      totalTransactions: transactions.length,
+      unclaimedCount: totals.unclaimedCount,
+      unpaidCount: totals.unpaidCount
+    });
   } catch (error) {
     console.error(error);
     res.status(500).json({ error: 'Failed to fetch transactions' });
   }
 });
 
+app.get('/api/transactions/unclaimed-unpaid', async (req, res) => {
+  const { date } = req.query;
+  try {
+    let query = 'SELECT * FROM Transactions WHERE date = $1 AND (remarks ILIKE $2 OR remarks ILIKE $3)';
+    const queryParams = [date, '%unclaimed%', '%unpaid%'];
+
+    const result = await pool.query(query, queryParams);
+    const transactions = result.rows || [];
+    res.status(200).json({ transactions });
+  } catch (error) {
+    console.error('Error fetching unclaimed/unpaid transactions:', error);
+    res.status(500).json({ error: 'Failed to fetch unclaimed/unpaid transactions' });
+  }
+});
+
+app.get('/api/transactions/unclaimed-unpaid-count', async (req, res) => {
+  const { date } = req.query;
+  if (!date) {
+    return res.status(400).json({ error: 'Date query parameter is required' });
+  }
+  try {
+    const query = 'SELECT COUNT(*) AS count FROM Transactions WHERE date = $1 AND (remarks ILIKE $2 OR remarks ILIKE $3)';
+    const queryParams = [date, '%unclaimed%', '%unpaid%'];
+    const result = await pool.query(query, queryParams);
+    const count = parseInt(result.rows[0].count) || 0;
+    res.status(200).json({ count });
+  } catch (error) {
+    console.error('Error fetching unclaimed/unpaid count:', error);
+    res.status(500).json({ error: 'Failed to fetch unclaimed/unpaid count' });
+  }
+});
 app.delete('/api/transactions/:id', async (req, res) => {
   const { id } = req.params;
 
@@ -316,7 +394,7 @@ app.put('/api/transactions/:id', async (req, res) => {
     await updateBalanceBasedOnTransaction(originalTransaction.type, originalTransaction.amount, 'add');
 
     await pool.query(
-      `UPDATE Transactions 
+      `UPDATE Transactions
        SET date = $1, time = $2, type = $3, amount = $4, name = $5, ref = $6, fee = $7, remarks = $8, updated_at = CURRENT_TIMESTAMP
        WHERE id = $9`,
       [date, time, type, amount, name, ref, fee, remarks, id]
@@ -404,7 +482,7 @@ app.get('/api/transactions/download', async (req, res) => {
     doc.moveDown(0.5);
 
     const tableTop = doc.y;
-    const colWidths = [30, 70, 50, 50, 50, 60, 60, 40, 70];
+    const colWidths = [30, 60, 40, 50, 40, 110, 40, 40, 130];
     const headers = ['ID', 'Date', 'Time', 'Type', 'Amount', 'Name', 'Ref', 'Fee', 'Remarks'];
     let xPos = 30;
 
@@ -450,7 +528,7 @@ app.get('/api/transactions/download', async (req, res) => {
       row.forEach((cell, i) => {
         if (i === 8) {
           doc.rect(xPos, yPos, colWidths[i], 15).fillAndStroke(remarksColor, '#000000');
-          
+
           let fontSize = 8;
           doc.font('Helvetica-Bold').fontSize(fontSize);
           let textWidth = doc.widthOfString(cell);
@@ -460,13 +538,13 @@ app.get('/api/transactions/download', async (req, res) => {
             doc.fontSize(fontSize);
             textWidth = doc.widthOfString(cell);
           }
-          
+
           doc.fillColor('black').text(cell, xPos + 2, yPos + 3, { width: colWidths[i], align: 'center' });
         } else {
           doc.rect(xPos, yPos, colWidths[i], 15).stroke();
           doc.font('Helvetica').fontSize(8).text(cell, xPos + 2, yPos + 3, { width: colWidths[i], align: 'center' });
+          xPos += colWidths[i];
         }
-        xPos += colWidths[i];
       });
 
       yPos += 15;
@@ -479,10 +557,64 @@ app.get('/api/transactions/download', async (req, res) => {
   }
 });
 
+app.get('/api/reports/user-transactions', async (req, res) => {
+  const { page = 1, limit = 10, search } = req.query;
+  const offset = (page - 1) * limit;
+
+  try {
+    let query = `
+      SELECT
+        name,
+        SUM(CASE WHEN type = 'Cash In' THEN 1 ELSE 0 END) AS cash_in,
+        SUM(CASE WHEN type = 'Cash Out' THEN 1 ELSE 0 END) AS cash_out,
+        SUM(CASE WHEN type = 'Load' THEN 1 ELSE 0 END) AS load,
+        SUM(CAST(fee AS DECIMAL)) AS total_fee,
+        MAX(updated_at) AS last_transaction
+      FROM Transactions
+    `;
+    let countQuery = 'SELECT COUNT(DISTINCT name) AS total FROM Transactions';
+    const queryParams = [];
+    let paramIndex = 1;
+
+    if (search) {
+      query += ` WHERE name ILIKE $${paramIndex}`;
+      countQuery += ` WHERE name ILIKE $${paramIndex}`;
+      queryParams.push(`%${search}%`);
+      paramIndex++;
+    }
+
+    query += `
+      GROUP BY name
+      ORDER BY name ASC
+      LIMIT $${paramIndex} OFFSET $${paramIndex + 1}
+    `;
+    queryParams.push(limit, offset);
+
+    const result = await pool.query(query, queryParams);
+    const countResult = await pool.query(countQuery, search ? [queryParams[0]] : []);
+
+    const userTransactions = result.rows.map(row => ({
+      name: row.name,
+      cashIn: parseInt(row.cash_in),
+      cashOut: parseInt(row.cash_out),
+      load: parseInt(row.load),
+      totalFee: parseFloat(row.total_fee),
+      lastTransaction: row.last_transaction ? row.last_transaction.toISOString() : null,
+    }));
+
+    const totalUsers = parseInt(countResult.rows[0].total);
+
+    res.status(200).json({ userTransactions, totalUsers });
+  } catch (error) {
+    console.error('Error fetching user transactions:', error);
+    res.status(500).json({ error: 'Failed to fetch user transactions' });
+  }
+});
+
 app.get('/api/reports/monthly-transactions', async (req, res) => {
   try {
     const result = await pool.query(`
-      SELECT 
+      SELECT
         TO_CHAR(TO_DATE(date, 'YYYY-MM-DD'), 'YYYY-MM') AS month,
         COUNT(*) AS total_transactions,
         SUM(CAST(amount AS DECIMAL)) AS total_amount,
@@ -508,62 +640,111 @@ app.get('/api/reports/monthly-transactions', async (req, res) => {
 
 app.get('/api/reports/fee-comparison', async (req, res) => {
   try {
-    const thisMonth = '2025-04';
-    const lastMonth = '2025-03';
-
-    const thisMonthResult = await pool.query(`
-      SELECT SUM(CAST(fee AS DECIMAL)) AS total_fee
+    const result = await pool.query(`
+      SELECT
+        COALESCE(SUM(CASE
+          WHEN TO_CHAR(TO_DATE(date, 'YYYY-MM-DD'), 'YYYY-MM') = TO_CHAR(CURRENT_DATE, 'YYYY-MM')
+          THEN CAST(fee AS DECIMAL)
+          ELSE 0
+        END), 0) AS this_month_fee,
+        COALESCE(SUM(CASE
+          WHEN TO_CHAR(TO_DATE(date, 'YYYY-MM-DD'), 'YYYY-MM') = TO_CHAR(CURRENT_DATE - INTERVAL '1 month', 'YYYY-MM')
+          THEN CAST(fee AS DECIMAL)
+          ELSE 0
+        END), 0) AS last_month_fee,
+        TO_CHAR(CURRENT_DATE, 'MMMM YYYY') AS this_month_name,
+        TO_CHAR(CURRENT_DATE - INTERVAL '1 month', 'MMMM YYYY') AS last_month_name
       FROM Transactions
-      WHERE TO_CHAR(TO_DATE(date, 'YYYY-MM-DD'), 'YYYY-MM') = $1
-    `, [thisMonth]);
+      WHERE TO_CHAR(TO_DATE(date, 'YYYY-MM-DD'), 'YYYY-MM') IN (
+        TO_CHAR(CURRENT_DATE, 'YYYY-MM'),
+        TO_CHAR(CURRENT_DATE - INTERVAL '1 month', 'YYYY-MM')
+      );
+    `);
 
-    const lastMonthResult = await pool.query(`
-      SELECT SUM(CAST(fee AS DECIMAL)) AS total_fee
-      FROM Transactions
-      WHERE TO_CHAR(TO_DATE(date, 'YYYY-MM-DD'), 'YYYY-MM') = $1
-    `, [lastMonth]);
+    const { this_month_fee, last_month_fee, this_month_name, last_month_name } = result.rows[0] || {
+      this_month_fee: 0,
+      last_month_fee: 0,
+      this_month_name: new Date().toLocaleString('en-US', { month: 'long', year: 'numeric' }),
+      last_month_name: new Date(new Date().setMonth(new Date().getMonth() - 1)).toLocaleString('en-US', { month: 'long', year: 'numeric' }),
+    };
 
-    const thisMonthFee = thisMonthResult.rows[0].total_fee ? parseFloat(thisMonthResult.rows[0].total_fee) : 0;
-    const lastMonthFee = lastMonthResult.rows[0].total_fee ? parseFloat(lastMonthResult.rows[0].total_fee) : 0;
-
-    res.status(200).json({ thisMonthFee, lastMonthFee });
+    res.status(200).json({
+      thisMonthFee: parseFloat(this_month_fee),
+      lastMonthFee: parseFloat(last_month_fee),
+      thisMonthName: this_month_name,
+      lastMonthName: last_month_name,
+    });
   } catch (error) {
     console.error('Error fetching fee comparison:', error);
     res.status(500).json({ error: 'Failed to fetch fee comparison' });
   }
 });
 
-// Backup endpoint
+app.get('/api/reports/trend', async (req, res) => {
+  const { startDate, endDate } = req.query;
+
+  if (!startDate || !endDate) {
+    return res.status(400).json({ error: 'startDate and endDate are required' });
+  }
+
+  try {
+    const result = await pool.query(`
+      SELECT
+        date,
+        SUM(CAST(amount AS DECIMAL)) AS total_amount
+      FROM Transactions
+      WHERE date >= $1 AND date <= $2
+      GROUP BY date
+      ORDER BY date ASC
+    `, [startDate, endDate]);
+
+    res.status(200).json(result.rows);
+  } catch (error) {
+    console.error('Error fetching transaction trends:', error);
+    res.status(500).json({ error: 'Failed to fetch transaction trends' });
+  }
+});
+
+app.get('/api/reports/type-breakdown', async (req, res) => {
+  try {
+    const result = await pool.query(`
+      SELECT
+        type,
+        COUNT(*) AS count
+      FROM Transactions
+      GROUP BY type
+    `);
+
+    const typeBreakdown = result.rows.reduce((acc, row) => {
+      acc[row.type] = parseInt(row.count);
+      return acc;
+    }, {});
+
+    res.status(200).json(typeBreakdown);
+  } catch (error) {
+    console.error('Error fetching type breakdown:', error);
+    res.status(500).json({ error: 'Failed to fetch type breakdown' });
+  }
+});
+
 app.get('/api/backup', async (req, res) => {
   try {
     const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
-    const backupFileName = `gcash_backup_${timestamp}.sql`;
-    const backupFilePath = path.join('/app/backups', backupFileName);
+    const backupFile = path.join('/tmp', `backup-${timestamp}.sql`);
+    const dbConfig = new URL(process.env.DATABASE_URL);
 
-    // Ensure the backups directory exists
-    const backupDir = '/app/backups';
-    if (!fs.existsSync(backupDir)) {
-      fs.mkdirSync(backupDir, { recursive: true });
-    }
+    const pgDumpCommand = `pg_dump --host=${dbConfig.hostname} --port=${dbConfig.port || 5432} --username=${dbConfig.username} --dbname=${dbConfig.pathname.slice(1)} > ${backupFile}`;
 
-    // Use pg_dump to create a backup
-    const pgDumpCommand = `pg_dump -h postgres -U kfa -d gcash_db > ${backupFilePath}`;
-    await execPromise(pgDumpCommand, { env: { ...process.env, PGPASSWORD: 'root' } });
+    await execPromise(`PGPASSWORD=${dbConfig.password} ${pgDumpCommand}`);
 
-    // Check if the backup file was created
-    if (!fs.existsSync(backupFilePath)) {
-      throw new Error('Backup file was not created');
-    }
-
-    // Explicitly set headers and send the file
-    res.setHeader('Content-Disposition', `attachment; filename="${backupFileName}"`);
-    res.setHeader('Content-Type', 'application/octet-stream');
-    res.sendFile(backupFilePath, (err) => {
+    res.download(backupFile, `gcash_backup_${timestamp}.sql`, (err) => {
       if (err) {
         console.error('Error sending backup file:', err);
-        res.status(500).json({ error: 'Failed to download backup file' });
+        res.status(500).json({ error: 'Failed to send backup file' });
       }
-      console.log(`Backup file retained at: ${backupFilePath}`);
+      fs.unlink(backupFile, (unlinkErr) => {
+        if (unlinkErr) console.error('Error deleting backup file:', unlinkErr);
+      });
     });
   } catch (error) {
     console.error('Error creating backup:', error);
@@ -571,23 +752,33 @@ app.get('/api/backup', async (req, res) => {
   }
 });
 
-// Restore endpoint
 app.post('/api/restore', upload.single('backupFile'), async (req, res) => {
+  if (!req.file) {
+    return res.status(400).json({ error: 'No backup file uploaded' });
+  }
+
   try {
-    if (!req.file) {
-      return res.status(400).json({ error: 'No backup file uploaded' });
-    }
+    const backupFile = req.file.path;
+    const dbConfig = new URL(process.env.DATABASE_URL);
+    const dbName = dbConfig.pathname.slice(1);
 
-    const backupFilePath = req.file.path;
+    // Drop existing tables
+    await pool.query(`
+      DROP TABLE IF EXISTS Transactions CASCADE;
+      DROP TABLE IF EXISTS CurrentBalance CASCADE;
+      DROP TABLE IF EXISTS Notes CASCADE;
+    `);
 
-    // Restore the database using psql without dropping the schema
-    const psqlCommand = `psql -h postgres -U kfa -d gcash_db < ${backupFilePath}`;
-    await execPromise(psqlCommand, { env: { ...process.env, PGPASSWORD: 'root' } });
+    // Execute restore
+    const psqlCommand = `psql --host=${dbConfig.hostname} --port=${dbConfig.port || 5432} --username=${dbConfig.username} --dbname=${dbName} < ${backupFile}`;
 
-    // Clean up the uploaded file
-    fs.unlink(backupFilePath, (unlinkErr) => {
-      if (unlinkErr) console.error('Error deleting uploaded file:', unlinkErr);
+    await execPromise(`PGPASSWORD=${dbConfig.password} ${psqlCommand}`);
+
+    fs.unlink(backupFile, (err) => {
+      if (err) console.error('Error deleting uploaded file:', err);
     });
+
+    await initializeDatabase();
 
     res.status(200).json({ message: 'Database restored successfully' });
   } catch (error) {
@@ -596,147 +787,68 @@ app.post('/api/restore', upload.single('backupFile'), async (req, res) => {
   }
 });
 
-// Updated Endpoint: Transaction Trends (Custom Date Range)
-app.get('/api/reports/trend', async (req, res) => {
+// Notes Endpoints
+app.post('/api/notes', async (req, res) => {
+  const { content } = req.body;
+  if (!content) {
+    return res.status(400).json({ error: 'Note content is required' });
+  }
+
   try {
-    const { startDate, endDate } = req.query;
-
-    // Validate date inputs
-    if (!startDate || !endDate) {
-      return res.status(400).json({ error: 'startDate and endDate are required' });
-    }
-    if (new Date(startDate) > new Date(endDate)) {
-      return res.status(400).json({ error: 'startDate cannot be later than endDate' });
-    }
-
-    // Generate array of dates between startDate and endDate
-    const dates = [];
-    const results = [];
-    let currentDate = new Date(startDate);
-    const end = new Date(endDate);
-
-    while (currentDate <= end) {
-      const dateStr = currentDate.toISOString().split('T')[0];
-      dates.push(dateStr);
-      results.push({ date: dateStr, totalAmount: 0 });
-      currentDate.setDate(currentDate.getDate() + 1);
-    }
-
-    // Query transactions within the date range
-    const query = `
-      SELECT date, SUM(CAST(amount AS DECIMAL)) as total_amount
-      FROM Transactions
-      WHERE date >= $1 AND date <= $2
-      GROUP BY date
-      ORDER BY date ASC
-    `;
-    const queryResult = await pool.query(query, [startDate, endDate]);
-
-    // Map query results to the dates array
-    queryResult.rows.forEach(row => {
-      const index = dates.indexOf(row.date);
-      if (index !== -1) {
-        results[index].totalAmount = parseFloat(row.total_amount) || 0;
-      }
-    });
-
-    res.status(200).json(results);
+    const result = await pool.query(
+      'INSERT INTO Notes (content, created_at) VALUES ($1, CURRENT_TIMESTAMP) RETURNING id',
+      [content]
+    );
+    res.status(200).json({ message: 'Note saved', id: result.rows[0].id });
   } catch (error) {
-    console.error('Error fetching trend data:', error);
-    res.status(500).json({ error: 'Failed to fetch trend data' });
+    console.error('Error saving note:', error);
+    res.status(500).json({ error: 'Failed to save note' });
   }
 });
 
-// Transaction Type Breakdown
-app.get('/api/reports/type-breakdown', async (req, res) => {
+app.get('/api/notes', async (req, res) => {
   try {
-    const query = `
-      SELECT type, COUNT(*) as count
-      FROM Transactions
-      GROUP BY type
-    `;
-    const result = await pool.query(query);
-
-    const breakdown = {
-      "Cash In": 0,
-      "Cash Out": 0,
-      "Load": 0
-    };
-    result.rows.forEach(row => {
-      if (breakdown.hasOwnProperty(row.type)) {
-        breakdown[row.type] = parseInt(row.count);
-      }
-    });
-
-    res.status(200).json(breakdown);
+    const result = await pool.query('SELECT * FROM Notes WHERE is_completed = FALSE ORDER BY created_at DESC');
+    res.status(200).json(result.rows);
   } catch (error) {
-    console.error('Error fetching type breakdown:', error);
-    res.status(500).json({ error: 'Failed to fetch type breakdown' });
+    console.error('Error fetching notes:', error);
+    res.status(500).json({ error: 'Failed to fetch notes' });
   }
 });
 
-// User Transactions Report with Pagination and Search
-app.get('/api/reports/user-transactions', async (req, res) => {
+app.put('/api/notes/:id/complete', async (req, res) => {
+  const { id } = req.params;
+
   try {
-    const page = parseInt(req.query.page) || 1;
-    const limit = parseInt(req.query.limit) || 10;
-    const search = req.query.search || '';
-    const offset = (page - 1) * limit;
-
-    // Query for paginated user transactions with optional search
-    let query = `
-      SELECT 
-        name,
-        SUM(CASE WHEN type = 'Cash In' THEN 1 ELSE 0 END) AS cash_in_count,
-        SUM(CASE WHEN type = 'Cash Out' THEN 1 ELSE 0 END) AS cash_out_count,
-        SUM(CASE WHEN type = 'Load' THEN 1 ELSE 0 END) AS load_count,
-        MAX(date) AS last_transaction
-      FROM Transactions
-    `;
-    let countQuery = `
-      SELECT COUNT(DISTINCT name) AS total_users
-      FROM Transactions
-    `;
-    const queryParams = [];
-    const countParams = [];
-
-    if (search) {
-      query += ` WHERE name ILIKE $1`;
-      countQuery += ` WHERE name ILIKE $1`;
-      queryParams.push(`%${search}%`);
-      countParams.push(`%${search}%`);
+    const result = await pool.query(
+      'UPDATE Notes SET is_completed = TRUE WHERE id = $1 RETURNING id',
+      [id]
+    );
+    if (result.rows.length === 0) {
+      return res.status(404).json({ error: 'Note not found' });
     }
-
-    query += `
-      GROUP BY name
-      ORDER BY name ASC
-      LIMIT $${queryParams.length + 1} OFFSET $${queryParams.length + 2}
-    `;
-    queryParams.push(limit, offset);
-
-    // Execute queries
-    const [result, countResult] = await Promise.all([
-      pool.query(query, queryParams),
-      pool.query(countQuery, countParams)
-    ]);
-
-    const userTransactions = result.rows.map(row => ({
-      name: row.name,
-      cashIn: parseInt(row.cash_in_count),
-      cashOut: parseInt(row.cash_out_count),
-      load: parseInt(row.load_count),
-      lastTransaction: row.last_transaction
-    }));
-
-    const totalUsers = parseInt(countResult.rows[0].total_users) || 0;
-
-    res.status(200).json({ userTransactions, totalUsers });
+    res.status(200).json({ message: 'Note marked as completed' });
   } catch (error) {
-    console.error('Error fetching user transactions:', error);
-    res.status(500).json({ error: 'Failed to fetch user transactions' });
+    console.error('Error marking note as completed:', error);
+    res.status(500).json({ error: 'Failed to mark note as completed' });
+  }
+});
+
+app.delete('/api/notes/:id', async (req, res) => {
+  const { id } = req.params;
+
+  try {
+    const result = await pool.query('DELETE FROM Notes WHERE id = $1 RETURNING id', [id]);
+    if (result.rows.length === 0) {
+      return res.status(404).json({ error: 'Note not found' });
+    }
+    res.status(200).json({ message: 'Note deleted successfully' });
+  } catch (error) {
+    console.error('Error deleting note:', error);
+    res.status(500).json({ error: 'Failed to delete note' });
   }
 });
 
 app.listen(port, () => {
-  console.log(`Backend running on port ${port}`);
+  console.log(`Server running on http://localhost:${port}`);
 });

@@ -14,7 +14,7 @@ services:
 
   backend:
     container_name: 'backend'
-    image: 'dockerfile/npm-gcash-sql:v5'
+    image: 'dockerfile/npm-gcash-sql:v5.6'
     ports:
       - "5000:5000"
     depends_on:
